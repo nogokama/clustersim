@@ -1,0 +1,24 @@
+--- 
+workload:
+  - type: Google
+    options: 
+      instances_path: /Users/makogon/university/diploma/traces/google_2019/bigquery/instance_events_fixed.csv 
+      collections_path: /Users/makogon/university/diploma/traces/google_2019/bigquery/collection_events.csv 
+      resources_multiplier: 100000
+      time_scale: 1e6
+
+
+# trace_hosts:
+#   path: /Users/makogon/university/diploma/traces/google_2019/bigquery/machine_events.csv
+#   resources_multiplier: 100000
+  
+hosts:
+  - count: 4
+    cpus: 100000
+    memory: 100000
+    name_prefix: m
+
+monitoring:
+  host_load_compression_time_interval: 100
+  scheduler_queue_compression_time_interval: 400
+  display_host_load: false 

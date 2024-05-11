@@ -1,0 +1,22 @@
+--- 
+workload:
+  - type: Native 
+    path: workloads/combined_workload.yaml
+    options:
+      profile_path: profiles/combined_profiles.yaml
+      
+
+hosts: 
+  - count: 100
+    cpus: 30
+    cpu_speed: 1
+    memory: 120
+    name_prefix: m
+  - count: 100
+    cpus: 60
+    cpu_speed: 1
+    memory: 60
+    name_prefix: c
+
+
+    

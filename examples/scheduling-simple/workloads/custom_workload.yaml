@@ -1,0 +1,10 @@
+- submit_time: 10.12
+  resources:
+    nodes_count: 1
+    cpu_per_node: 2
+    memory_per_node: 4
+  profile:
+    type: test-profile
+    args:
+      compute_work: 1
+      data_transfer: 10

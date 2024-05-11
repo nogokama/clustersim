@@ -1,0 +1,28 @@
+--- 
+workload:
+  - type: Native 
+    path: workloads/custom_workload.yaml
+      
+
+hosts: 
+  - count: 5
+    cpus: 30
+    cpu_speed: 1
+    memory: 120
+    name_prefix: m
+  - count: 5
+    cpus: 60
+    cpu_speed: 1
+    memory: 60
+    name_prefix: c
+  
+network: 
+  local_bandwidth: 1000
+  shared: true 
+  local_latency: 0
+  latency: 0.1
+  bandwidth: 100
+
+
+
+    

@@ -1,0 +1,47 @@
+---
+simple:
+  type: cpu-burn-homogenous
+  args:
+    flops: 1000
+
+hard:
+  type: cpu-burn-homogenous
+  args:
+    flops: 10000
+
+test_parallel:
+  type: parallel
+  args:
+    profiles:
+      - simple
+      - hard
+      - simple 
+      - hard
+      - simple
+      - hard 
+
+test_sequence:
+  type: sequence
+  args: 
+    profiles:
+      - simple
+      - hard
+
+advanced_parallel:
+  type: parallel
+  args: 
+    profiles:
+      - type: sequence
+        args:
+          repeat: 2
+          profiles:
+            - simple
+            - hard
+      - type: sequence
+        args:
+          repeat: 4
+          profiles:
+            - hard
+            - hard
+            - simple
+        

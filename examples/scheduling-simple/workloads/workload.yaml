@@ -1,0 +1,24 @@
+- submit_time: 10.12
+  resources:
+    nodes_count: 1
+    cpu_per_node: 2
+    memory_per_node: 4
+  profile:
+    type: cpu-burn-homogenous
+    args:
+      flops: 1
+
+- submit_time: 10.12
+  resources:
+    nodes_count: 1
+    cpu_per_node: 2
+    memory_per_node: 4
+  profile: simple
+
+- submit_time: 10.12
+  wall_time_limit: 3000
+  resources:
+    nodes_count: 1
+    cpu_per_node: 2
+    memory_per_node: 4
+  profile: hard

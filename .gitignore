@@ -1,0 +1,12 @@
+# Rust
+debug/
+target/
+**/*.rs.bk
+*.pdb
+
+# Python
+__pycache__
+
+# Idea
+.idea/
+

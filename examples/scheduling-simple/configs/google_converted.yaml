@@ -1,0 +1,21 @@
+--- 
+workload:
+  - type: Native 
+    path: workloads/google_converted.yaml
+
+
+# trace_hosts:
+#   path: /Users/makogon/university/diploma/traces/google_2019/bigquery/machine_events.csv
+#   resources_multiplier: 100000
+  
+hosts:
+  - count: 2
+    cpus: 100000
+    memory: 100000
+    name_prefix: m
+    name: m
+
+monitoring:
+  host_load_compression_time_interval: 100
+  scheduler_queue_compression_time_interval: 400
+  display_host_load: true 
