@@ -1,19 +1,20 @@
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 use dslab_core::{cast, log_debug, EventHandler, Id, SimulationContext};
+use serde::Serialize;
 
 use crate::{
     cluster_events::HostAdded,
     monitoring::Monitoring,
     storage::SharedInfoStorage,
-    workload_generators::events::{ExecutionRequest, ExecutionRequestEvent},
+    workload_generators::events::{CollectionRequestEvent, ExecutionRequest, ExecutionRequestEvent},
 };
 
 pub struct Proxy {
     jobs_scheduled_time: HashMap<u64, f64>,
     scheduler_id: Id,
     cluster_id: Id,
-    job_info_storage: Rc<RefCell<SharedInfoStorage>>,
+    shared_info_storage: Rc<RefCell<SharedInfoStorage>>,
     monitoring: Rc<RefCell<Monitoring>>,
 
     ctx: SimulationContext,
@@ -23,14 +24,14 @@ impl Proxy {
     pub fn new(
         ctx: SimulationContext,
         cluster_id: Id,
-        job_info_storage: Rc<RefCell<SharedInfoStorage>>,
+        shared_info_storage: Rc<RefCell<SharedInfoStorage>>,
         monitoring: Rc<RefCell<Monitoring>>,
     ) -> Proxy {
         Proxy {
             scheduler_id: u32::MAX,
             jobs_scheduled_time: HashMap::new(),
             cluster_id,
-            job_info_storage,
+            shared_info_storage,
             monitoring,
             ctx,
         }
@@ -51,19 +52,30 @@ impl EventHandler for Proxy {
             ExecutionRequestEvent { request } => {
                 self.jobs_scheduled_time.insert(request.id.unwrap(), self.ctx.time());
 
-                self.job_info_storage
+                self.shared_info_storage
                     .borrow_mut()
                     .set_execution_request(request.id.unwrap(), request.clone());
 
+                let user = self
+                    .shared_info_storage
+                    .borrow()
+                    .get_execution_user(request.id.unwrap());
+
+                self.monitoring
+                    .borrow_mut()
+                    .add_scheduler_queue_size(event.time, 1, user);
+
                 self.ctx.emit_now(ExecutionRequestEvent { request }, self.scheduler_id);
-
-                self.monitoring.borrow_mut().add_scheduler_queue_size(event.time, 1);
             }
-
             HostAdded { host } => {
                 log_debug!(self.ctx, "HostAdded: {}, {}", host.id, self.ctx.time());
                 self.ctx.emit_now(HostAdded { host: host.clone() }, self.scheduler_id);
                 self.ctx.emit_now(HostAdded { host }, self.cluster_id);
+            }
+            CollectionRequestEvent { request } => {
+                self.shared_info_storage.borrow_mut().add_collection(request.clone());
+
+                self.ctx.emit_now(CollectionRequestEvent { request }, self.scheduler_id);
             }
         })
     }

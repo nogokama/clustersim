@@ -18,9 +18,9 @@ impl HostProcessInstance {
         self.host.sleep(time).await;
     }
 
-    pub async fn run_flops(&self, flops: f64, cores_dependency: CoresDependency) {
+    pub async fn run_compute(&self, compute_work: f64, cores_dependency: CoresDependency) {
         self.host
-            .run_flops(flops, self.compute_allocation_id, cores_dependency)
+            .run_compute(compute_work, self.compute_allocation_id, cores_dependency)
             .await;
     }
 

@@ -17,7 +17,7 @@ use crate::{
 };
 
 use super::{
-    events::{CollectionEvent, ExecutionRequest, ResourceRequirements},
+    events::{CollectionRequest, ExecutionRequest, ResourceRequirements},
     generator::WorkloadGenerator,
     google_protos::events::{machine_event, InstanceEvent},
     native::NativeExecutionDefinition,
@@ -125,13 +125,13 @@ impl WorkloadGenerator for GoogleTraceWorkloadGenerator {
                         cpu_per_node: d.cpus,
                         memory_per_node: d.memory,
                     },
-                    Rc::new(CpuBurnHomogenous { flops: d.flops }),
+                    Rc::new(CpuBurnHomogenous { compute_work: d.flops }),
                 )
             })
             .collect::<Vec<_>>()
     }
 
-    fn get_collections(&self, ctx: &dslab_core::SimulationContext) -> Vec<CollectionEvent> {
+    fn get_collections(&self, ctx: &dslab_core::SimulationContext) -> Vec<CollectionRequest> {
         vec![]
     }
 }
@@ -268,7 +268,7 @@ impl GoogleTraceWorkloadGenerator {
                 },
                 profile: crate::execution_profiles::builder::ProfileDefinition::Detailed {
                     r#type: CpuBurnHomogenous::get_name(),
-                    args: serde_yaml::to_value(CpuBurnHomogenous { flops: d.flops }).unwrap(),
+                    args: serde_yaml::to_value(CpuBurnHomogenous { compute_work: d.flops }).unwrap(),
                 },
                 wall_time_limit: None,
                 priority: d.priority,

@@ -6,7 +6,7 @@ use dslab_core::{cast, EventHandler, Id, Simulation, SimulationContext};
 use dslab_scheduling::{
     cluster::{ExecutionFinished, ScheduleExecution},
     config::sim_config::SimulationConfig,
-    scheduler::{CustomScheduler, Resources},
+    scheduler::CustomScheduler,
     simulation::ClusterSchedulingSimulation,
     workload_generators::random::RandomWorkloadGenerator,
 };
@@ -27,7 +27,8 @@ fn main() {
 
     let mut sim = Simulation::new(42);
 
-    let config = SimulationConfig::from_file("configs/config.yaml");
+    // let config = SimulationConfig::from_file("configs/config.yaml");
+    let config = SimulationConfig::from_file("configs/config_with_users.yaml");
     // let config = SimulationConfig::from_file("configs/config_with_native.yaml");
     // let config = SimulationConfig::from_file("configs/config_with_combinators.yaml");
     // let config = SimulationConfig::from_file("configs/config_with_custom_profiles.yaml");

@@ -1,7 +1,9 @@
 use core::{panic, time};
 use std::{cell::RefCell, collections::HashSet, rc::Rc, vec};
 
-use dslab_compute::multicore::{AllocationSuccess, CompFinished, CompStarted, Compute, DeallocationSuccess};
+use dslab_compute::multicore::{
+    AllocationFailed, AllocationSuccess, CompFinished, CompStarted, Compute, DeallocationSuccess,
+};
 use dslab_core::{event, EventHandler, Id, Simulation, SimulationContext};
 use dslab_network::{
     models::{ConstantBandwidthNetworkModel, SharedBandwidthNetworkModel},
@@ -19,14 +21,17 @@ use crate::{
         builder::{ConstructorFn, ProfileBuilder},
         profile::ExecutionProfile,
     },
-    host::{cluster_host::ClusterHost, storage::ProcessHostStorage},
+    host::cluster_host::ClusterHost,
     monitoring::Monitoring,
     proxy::Proxy,
     scheduler::{CustomScheduler, Scheduler, SchedulerContext, SchedulerInvoker},
     storage::SharedInfoStorage,
     workload_generators::{
-        events::ExecutionRequestEvent, generator::WorkloadGenerator, google_trace_reader::GoogleClusterHostsReader,
-        random::RandomWorkloadGenerator, workload_type::workload_resolver,
+        events::{CollectionRequestEvent, ExecutionRequestEvent},
+        generator::WorkloadGenerator,
+        google_trace_reader::GoogleClusterHostsReader,
+        random::RandomWorkloadGenerator,
+        workload_type::workload_resolver,
     },
 };
 
@@ -37,8 +42,7 @@ pub struct ClusterSchedulingSimulation {
     cluster: Rc<RefCell<Cluster>>,
     proxy: Rc<RefCell<Proxy>>,
     monitoring: Rc<RefCell<Monitoring>>,
-    shared_storage: Rc<RefCell<SharedInfoStorage>>,
-    host_process_storage: Rc<RefCell<ProcessHostStorage>>,
+    shared_info_storage: Rc<RefCell<SharedInfoStorage>>,
 
     profile_builder: ProfileBuilder,
 }
@@ -51,15 +55,14 @@ impl ClusterSchedulingSimulation {
     ) -> ClusterSchedulingSimulation {
         let monitoring = rc!(refcell!(Monitoring::new(config.monitoring.unwrap_or_default())));
         let shared_storage = rc!(refcell!(SharedInfoStorage::new()));
-        let host_process_storage = rc!(refcell!(ProcessHostStorage::new()));
 
         let cluster_ctx = sim.create_context("cluster");
         let cluster_id = cluster_ctx.id();
         let cluster = rc!(refcell!(Cluster::new(
             cluster_ctx,
             shared_storage.clone(),
-            host_process_storage.clone(),
             monitoring.clone(),
+            config.scheduler.hosts_invoke_interval,
         )));
         sim.add_handler("cluster", cluster.clone());
 
@@ -68,7 +71,7 @@ impl ClusterSchedulingSimulation {
             proxy_ctx,
             cluster_id,
             shared_storage.clone(),
-            monitoring.clone()
+            monitoring.clone(),
         )));
         sim.add_handler("proxy", proxy.clone());
 
@@ -87,8 +90,7 @@ impl ClusterSchedulingSimulation {
                 .collect::<Vec<_>>(),
             cluster,
             proxy,
-            shared_storage,
-            host_process_storage,
+            shared_info_storage: shared_storage,
             monitoring,
 
             profile_builder,
@@ -229,7 +231,7 @@ impl ClusterSchedulingSimulation {
             compute,
             network,
             disk,
-            self.host_process_storage.clone(),
+            self.shared_info_storage.clone(),
             self.monitoring.clone(),
             host_config.group_prefix.clone(),
             host_ctx
@@ -266,7 +268,9 @@ impl ClusterSchedulingSimulation {
         self.cluster.borrow_mut().set_scheduler(scheduler_id);
         self.proxy.borrow_mut().set_scheduler(scheduler_id);
 
-        self.generate_workload();
+        let expected_workload_cnt = self.generate_workload();
+
+        self.cluster.borrow_mut().start(expected_workload_cnt);
 
         // TODO for long simulation make a while loop
         self.sim.step_until_no_events();
@@ -281,29 +285,50 @@ impl ClusterSchedulingSimulation {
         self.run_with_custom_scheduler(invoker);
     }
 
-    fn generate_workload(&mut self) {
+    fn generate_workload(&mut self) -> u64 {
         let proxy_id = self.proxy.borrow().get_id();
 
         let generator_ctx = self.sim.create_context("generator");
 
-        let mut next_job_id = 0u64;
-        let mut used_ids = HashSet::new();
+        let mut next_execution_id = 0u64;
+        let mut next_collection_id = 0u64;
 
+        let mut used_execution_ids = HashSet::new();
+        let mut used_collection_ids = HashSet::new();
+
+        let mut total_workload_cnt: u64 = 0;
         for workload_generator in self.workload_generators.iter() {
             let mut workload = workload_generator.get_workload(&generator_ctx);
+            total_workload_cnt += workload.len() as u64;
+            let mut collections = workload_generator.get_collections(&generator_ctx);
 
             for execution_request in workload.iter_mut() {
                 if let Some(id) = execution_request.id {
-                    if used_ids.contains(&id) {
+                    if used_execution_ids.contains(&id) {
                         panic!("Job id {} is used twice", id);
                     }
-                    used_ids.insert(id);
+                    used_execution_ids.insert(id);
                 } else {
-                    while used_ids.contains(&next_job_id) {
-                        next_job_id += 1;
+                    while used_execution_ids.contains(&next_execution_id) {
+                        next_execution_id += 1;
                     }
-                    execution_request.id = Some(next_job_id);
-                    next_job_id += 1;
+                    execution_request.id = Some(next_execution_id);
+                    next_execution_id += 1;
+                }
+            }
+
+            for collection_event in collections.iter_mut() {
+                if let Some(id) = collection_event.id {
+                    if used_collection_ids.contains(&id) {
+                        panic!("Collection id {} is used twice", id);
+                    }
+                    used_collection_ids.insert(id);
+                } else {
+                    while used_collection_ids.contains(&next_collection_id) {
+                        next_collection_id += 1;
+                    }
+                    collection_event.id = Some(next_collection_id);
+                    next_collection_id += 1;
                 }
             }
 
@@ -317,13 +342,26 @@ impl ClusterSchedulingSimulation {
                     time,
                 );
             }
+            for collection_event in collections {
+                let time = collection_event.time;
+                generator_ctx.emit(
+                    CollectionRequestEvent {
+                        request: collection_event,
+                    },
+                    proxy_id,
+                    time,
+                );
+            }
         }
+
+        total_workload_cnt
     }
 
     fn register_key_getters(&self) {
         self.sim.register_key_getter_for::<CompFinished>(|c| c.id);
         self.sim.register_key_getter_for::<CompStarted>(|c| c.id);
         self.sim.register_key_getter_for::<AllocationSuccess>(|c| c.id);
+        self.sim.register_key_getter_for::<AllocationFailed>(|c| c.id);
         self.sim.register_key_getter_for::<DeallocationSuccess>(|c| c.id);
         self.sim
             .register_key_getter_for::<DataTransferCompleted>(|c| c.dt.id as u64);

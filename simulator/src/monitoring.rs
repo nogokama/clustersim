@@ -1,6 +1,7 @@
 use std::{
     collections::HashMap,
     fs::File,
+    hash::Hash,
     io::{BufWriter, Write},
 };
 
@@ -125,7 +126,7 @@ impl ResourceLoad {
 }
 
 #[derive(Clone, Serialize)]
-pub struct HostLoadInfo {
+pub struct LoadInfo {
     pub cpu: ResourceLoad,
     pub memory: ResourceLoad,
     pub disk_capacity: Option<ResourceLoad>,
@@ -133,7 +134,7 @@ pub struct HostLoadInfo {
     pub dump_points: Vec<MonitoringPoint>,
 }
 
-impl HostLoadInfo {
+impl LoadInfo {
     pub fn new(
         start_time: f64,
         cpu: f64,
@@ -145,6 +146,16 @@ impl HostLoadInfo {
             cpu: ResourceLoad::new_fraction(start_time, cpu, compression_time_interval),
             memory: ResourceLoad::new_fraction(start_time, memory, compression_time_interval),
             disk_capacity: disk_capacity.map(|d| ResourceLoad::new_fraction(start_time, d, compression_time_interval)),
+            compression_time_interval,
+            dump_points: Vec::new(),
+        }
+    }
+
+    pub fn new_absolute(compression_time_interval: Option<f64>) -> Self {
+        Self {
+            cpu: ResourceLoad::new_absolute(0., compression_time_interval),
+            memory: ResourceLoad::new_absolute(0., compression_time_interval),
+            disk_capacity: None,
             compression_time_interval,
             dump_points: Vec::new(),
         }
@@ -205,38 +216,57 @@ impl HostLoadInfo {
 }
 
 pub struct Monitoring {
-    pub hosts: HashMap<String, HostLoadInfo>,
-    pub groups: HashMap<String, HostLoadInfo>,
-    pub total: HostLoadInfo,
-    pub scheduler_queue_size: ResourceLoad,
+    // hosts load
+    pub hosts: HashMap<String, LoadInfo>,
+    pub groups: HashMap<String, LoadInfo>,
+    pub total: LoadInfo,
     pub host_load_compression_time_interval: Option<f64>,
     pub display_host_load: bool,
 
+    // scheduler queues
+    pub scheduler_queue_size: ResourceLoad,
+    pub scheduler_queue_size_by_user: HashMap<String, ResourceLoad>,
+    pub scheduler_time_compression_interval: Option<f64>,
+    pub collect_user_queues: bool,
+
+    // users dominant shares
+    pub user_dominant_shares: HashMap<String, ResourceLoad>,
+    pub user_resources: HashMap<String, LoadInfo>,
+
     host_log_file: BufWriter<File>,
     scheduler_log_file: BufWriter<File>,
+    fair_share_log_file: BufWriter<File>,
 }
 
 impl Monitoring {
     pub fn new(config: MonitoringConfig) -> Monitoring {
         let host_log_file_path = "load.txt";
         let scheduler_log_file_path = "scheduler_info.txt";
+        let fair_share_log_file_path = "fair_share.txt";
         let host_log_file = BufWriter::new(File::create(&host_log_file_path).unwrap());
         let scheduler_log_file = BufWriter::new(File::create(&scheduler_log_file_path).unwrap());
+        let fair_share_log_file = BufWriter::new(File::create(&fair_share_log_file_path).unwrap());
 
         Monitoring {
             hosts: HashMap::new(),
             groups: HashMap::new(),
-            total: HostLoadInfo::new(0., 0., 0., None, config.host_load_compression_time_interval),
+            total: LoadInfo::new(0., 0., 0., None, config.host_load_compression_time_interval),
             scheduler_queue_size: ResourceLoad::new_absolute(0., config.scheduler_queue_compression_time_interval),
+            scheduler_queue_size_by_user: HashMap::new(),
             host_log_file,
             scheduler_log_file,
+            fair_share_log_file,
+            collect_user_queues: config.collect_user_queues.unwrap_or(false),
             host_load_compression_time_interval: config.host_load_compression_time_interval,
-            display_host_load: config.display_host_load,
+            display_host_load: config.display_host_load.unwrap_or(false),
+            scheduler_time_compression_interval: config.scheduler_queue_compression_time_interval,
+            user_dominant_shares: HashMap::new(),
+            user_resources: HashMap::new(),
         }
     }
 
     pub fn add_host(&mut self, name: String, host_config: &HostConfig) {
-        let host_load_info = HostLoadInfo::new(
+        let host_load_info = LoadInfo::new(
             0.,
             host_config.cpus as f64,
             host_config.memory as f64,
@@ -247,7 +277,7 @@ impl Monitoring {
         if let Some(group_name) = &host_config.group_prefix {
             self.groups
                 .entry(group_name.clone())
-                .or_insert_with(|| HostLoadInfo::new(0., 0., 0., None, self.host_load_compression_time_interval))
+                .or_insert_with(|| LoadInfo::new(0., 0., 0., None, self.host_load_compression_time_interval))
                 .extend(&host_load_info);
         }
 
@@ -256,10 +286,45 @@ impl Monitoring {
         self.hosts.insert(name.clone(), host_load_info);
     }
 
-    pub fn add_scheduler_queue_size(&mut self, time: f64, addition: i64) {
+    pub fn add_scheduler_queue_size(&mut self, time: f64, addition: i64, user: Option<String>) {
         self.scheduler_queue_size.add(addition as f64, time);
         for points in self.scheduler_queue_size.dump() {
-            self.dump_scheduler_queue_size(points.time, points.value);
+            self.dump_scheduler_queue_size(points.time, points.value, None);
+        }
+        if self.collect_user_queues {
+            if let Some(user) = user {
+                self.scheduler_queue_size_by_user
+                    .entry(user.clone())
+                    .or_insert_with(|| ResourceLoad::new_absolute(0., self.scheduler_time_compression_interval))
+                    .add(addition as f64, time);
+                for points in self.scheduler_queue_size_by_user.get_mut(&user).unwrap().dump() {
+                    self.dump_scheduler_queue_size(points.time, points.value, Some(&user));
+                }
+            }
+        }
+    }
+
+    pub fn add_to_user(&mut self, time: f64, user: &String, cpu_addition: f64, memory_addition: f64) {
+        self.user_resources
+            .entry(user.clone())
+            .or_insert_with(|| LoadInfo::new_absolute(self.host_load_compression_time_interval))
+            .add(
+                MonitoringState {
+                    cpu: cpu_addition,
+                    memory: memory_addition,
+                    disk: None,
+                },
+                time,
+            );
+
+        for point in self.user_resources.get_mut(user).unwrap().dump() {
+            let cpu_share = point.state.cpu / self.total.cpu.total;
+            let memory_share = point.state.memory / self.total.memory.total;
+            if cpu_share > memory_share {
+                self.dump_dominant_share(point.time, &user, cpu_share);
+            } else {
+                self.dump_dominant_share(point.time, &user, memory_share);
+            }
         }
     }
 
@@ -317,7 +382,18 @@ impl Monitoring {
         .unwrap();
     }
 
-    fn dump_scheduler_queue_size(&mut self, time: f64, value: f64) {
-        writeln!(&mut self.scheduler_log_file, "{} {}", time, value).unwrap();
+    fn dump_scheduler_queue_size(&mut self, time: f64, value: f64, user: Option<&str>) {
+        writeln!(
+            &mut self.scheduler_log_file,
+            "{} {} {}",
+            time,
+            value,
+            user.unwrap_or("TOTAL")
+        )
+        .unwrap();
+    }
+
+    fn dump_dominant_share(&mut self, time: f64, user: &str, value: f64) {
+        writeln!(&mut self.fair_share_log_file, "{} {} {}", time, user, value).unwrap();
     }
 }

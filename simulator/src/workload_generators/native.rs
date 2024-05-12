@@ -31,12 +31,14 @@ pub struct NativeWorkloadGenerator {
     workload: Vec<NativeExecutionDefinition>,
     profile_builder: ProfileBuilder,
     profile_path: Option<String>,
+    collections_path: Option<String>,
 }
 
 impl NativeWorkloadGenerator {
     pub fn new(
         path: String,
         profile_path: Option<String>,
+        collections_path: Option<String>,
         mut profile_builder: ProfileBuilder,
     ) -> NativeWorkloadGenerator {
         let jobs: Vec<NativeExecutionDefinition> = serde_yaml::from_str(
@@ -48,6 +50,7 @@ impl NativeWorkloadGenerator {
             workload: jobs,
             profile_builder,
             profile_path,
+            collections_path,
         }
     }
 }

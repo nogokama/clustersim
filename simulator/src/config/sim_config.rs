@@ -83,7 +83,7 @@ pub struct TraceHostsConfig {
 pub struct RawSimulationConfig {
     pub hosts: Option<Vec<GroupHostConfig>>,
     pub trace_hosts: Option<TraceHostsConfig>,
-    pub schedulers: Option<Vec<SchedulerConfig>>,
+    pub scheduler: Option<SchedulerConfig>,
     pub workload: Option<Vec<ClusterWorkloadConfig>>,
     pub network: Option<NetworkConfig>,
     pub monitoring: Option<MonitoringConfig>,
@@ -116,12 +116,9 @@ pub struct NetworkConfig {
     pub bandwidth: f64,
 }
 
-#[derive(Debug, PartialEq, Serialize, Deserialize, Clone)]
+#[derive(Default, Debug, PartialEq, Serialize, Deserialize, Clone)]
 pub struct SchedulerConfig {
-    pub name: Option<String>,
-    pub name_prefix: Option<String>,
-    pub algorithm: String,
-    pub count: Option<u32>,
+    pub hosts_invoke_interval: Option<f64>,
 }
 
 #[derive(Debug, PartialEq, Serialize, Deserialize, Clone)]
@@ -144,7 +141,8 @@ pub enum MonitoringLevel {
 pub struct MonitoringConfig {
     pub host_load_compression_time_interval: Option<f64>,
     pub scheduler_queue_compression_time_interval: Option<f64>,
-    pub display_host_load: bool,
+    pub display_host_load: Option<bool>,
+    pub collect_user_queues: Option<bool>,
 }
 
 impl Default for MonitoringConfig {
@@ -152,7 +150,8 @@ impl Default for MonitoringConfig {
         Self {
             host_load_compression_time_interval: None,
             scheduler_queue_compression_time_interval: None,
-            display_host_load: true,
+            display_host_load: Some(true),
+            collect_user_queues: Some(true),
         }
     }
 }
@@ -166,7 +165,7 @@ pub struct SimulationConfig {
     pub hosts: Vec<GroupHostConfig>,
     pub trace_hosts: Option<TraceHostsConfig>,
     /// Configurations of schedulers.
-    pub schedulers: Vec<SchedulerConfig>,
+    pub scheduler: SchedulerConfig,
     pub network: Option<NetworkConfig>,
     pub monitoring: Option<MonitoringConfig>,
 }
@@ -180,13 +179,11 @@ impl SimulationConfig {
         )
         .unwrap_or_else(|e| panic!("Can't parse YAML from file {}: {}", file_name, e));
 
-        println!("{:?}", raw.monitoring);
-
         Self {
             workload: raw.workload,
             hosts: raw.hosts.unwrap_or_default(),
             trace_hosts: raw.trace_hosts,
-            schedulers: raw.schedulers.unwrap_or_default(),
+            scheduler: raw.scheduler.unwrap_or_default(),
             network: raw.network,
             monitoring: raw.monitoring,
         }

@@ -1,4 +1,4 @@
-use std::{os::unix::process, rc::Rc};
+use std::rc::Rc;
 
 use async_trait::async_trait;
 use dslab_compute::multicore::CoresDependency;
@@ -12,8 +12,30 @@ use crate::execution_profiles::profile::ExecutionProfile;
 use super::profile::NameTrait;
 
 #[derive(Deserialize, Serialize)]
+pub struct Idle {
+    pub time: f64,
+}
+
+#[async_trait(?Send)]
+impl ExecutionProfile for Idle {
+    async fn run(self: Rc<Self>, processes: &Vec<HostProcessInstance>) {
+        processes[0].sleep(self.time).await;
+    }
+
+    fn name(&self) -> String {
+        Self::get_name()
+    }
+}
+
+impl NameTrait for Idle {
+    fn get_name() -> String {
+        "idle".to_string()
+    }
+}
+
+#[derive(Deserialize, Serialize)]
 pub struct CpuBurnHomogenous {
-    pub flops: f64,
+    pub compute_work: f64,
 }
 
 #[async_trait(?Send)]
@@ -22,7 +44,7 @@ impl ExecutionProfile for CpuBurnHomogenous {
         join_all(
             processes
                 .iter()
-                .map(|p| p.run_flops(self.flops, CoresDependency::Linear)),
+                .map(|p| p.run_compute(self.compute_work, CoresDependency::Linear)),
         )
         .await;
     }
@@ -81,14 +103,14 @@ impl ExecutionProfile for MasterWorkers {
         let worker_processes = &processes[1..];
 
         join_all(worker_processes.iter().map(|p| async {
-            p.run_flops(self.worker_flops, CoresDependency::Linear).await;
+            p.run_compute(self.worker_flops, CoresDependency::Linear).await;
             p.transfer_data_to_process(self.data_transfer_bytes, master_process.id)
                 .await;
         }))
         .await;
 
         master_process
-            .run_flops(self.master_flops, CoresDependency::Linear)
+            .run_compute(self.master_flops, CoresDependency::Linear)
             .await;
     }
     fn name(&self) -> String {

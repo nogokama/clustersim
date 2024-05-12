@@ -95,11 +95,11 @@ impl Scheduler for RoundRobinScheduler {
         );
         self.hosts.push(host);
     }
+    fn on_host_resources(&mut self, ctx: &SchedulerContext, host_id: Id, resources: ResourcesPack) {}
     fn on_collection_request(
         &mut self,
         ctx: &SchedulerContext,
         collection_request: dslab_scheduling::workload_generators::events::CollectionRequest,
     ) {
     }
-    fn on_host_resources(&mut self, ctx: &SchedulerContext, host_id: Id, resources: ResourcesPack) {}
 }

@@ -6,7 +6,7 @@
   profile:
     type: cpu-burn-homogenous
     args:
-      flops: 1
+      compute_work: 1
 
 - submit_time: 10.12
   resources:

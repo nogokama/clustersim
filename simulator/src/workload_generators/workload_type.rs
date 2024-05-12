@@ -61,8 +61,14 @@ pub fn workload_resolver(
         WorkloadType::Native => Box::new(NativeWorkloadGenerator::new(
             path.expect("Native workload path is required"),
             options
-                .unwrap_or_default()
+                .as_ref()
+                .unwrap_or(&serde_yaml::Value::Null)
                 .get("profile_path")
+                .map(|f| f.as_str().unwrap().to_string()),
+            options
+                .as_ref()
+                .unwrap_or(&serde_yaml::Value::Null)
+                .get("collections_path")
                 .map(|f| f.as_str().unwrap().to_string()),
             profile_builder,
         )),

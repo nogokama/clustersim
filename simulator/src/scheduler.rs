@@ -2,16 +2,18 @@ use dslab_core::{cast, EventHandler, Id, SimulationContext};
 use serde::Serialize;
 
 use crate::{
-    cluster::{CancelExecution, ExecutionFinished, ScheduleExecution},
+    cluster::{CancelExecution, ExecutionFinished, HostInvoked, ScheduleExecution},
     cluster_events::HostAdded,
     config::sim_config::HostConfig,
-    workload_generators::events::{CollectionEvent, ExecutionRequest, ExecutionRequestEvent},
+    workload_generators::events::{
+        CollectionRequest, CollectionRequestEvent, ExecutionRequest, ExecutionRequestEvent, ResourcesPack,
+    },
 };
 
-#[derive(Debug)]
-pub struct Resources {
-    pub cpu_cores: u32,
-    pub memory: u64,
+#[derive(Clone, Serialize)]
+pub struct HostAvailableResources {
+    pub host_id: Id,
+    pub resources: ResourcesPack,
 }
 
 pub trait CustomScheduler {
@@ -50,8 +52,9 @@ impl SchedulerContext {
 pub trait Scheduler {
     fn on_host_added(&mut self, host: HostConfig);
     fn on_execution_request(&mut self, ctx: &SchedulerContext, request: ExecutionRequest);
-    fn on_collection_event(&mut self, ctx: &SchedulerContext, collection_event: CollectionEvent);
-    fn on_execution_finished(&mut self, ctx: &SchedulerContext, execution_id: u64, hosts: Vec<Id>);
+    fn on_collection_request(&mut self, ctx: &SchedulerContext, collection_request: CollectionRequest);
+    fn on_execution_finished(&mut self, ctx: &SchedulerContext, execution_id: u64, hosts: Vec<HostAvailableResources>);
+    fn on_host_resources(&mut self, ctx: &SchedulerContext, host_id: Id, resources: ResourcesPack);
 }
 
 pub struct SchedulerInvoker<T: Scheduler> {
@@ -88,6 +91,12 @@ impl<T: Scheduler> EventHandler for SchedulerInvoker<T> {
             }
             ExecutionFinished { execution_id, hosts } => {
                 self.scheduler.on_execution_finished(&self.ctx, execution_id, hosts);
+            }
+            CollectionRequestEvent { request } => {
+                self.scheduler.on_collection_request(&self.ctx, request);
+            }
+            HostInvoked { id, resources } => {
+                self.scheduler.on_host_resources(&self.ctx, id, resources);
             }
         })
     }

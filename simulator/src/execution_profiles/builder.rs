@@ -10,7 +10,7 @@ use crate::workload_generators::native;
 
 use super::{
     combinators::{self, ParallelProfile, ProfileCombinator, SequentialProfile},
-    default::{CommunicationHomogenous, CpuBurnHomogenous},
+    default::{CommunicationHomogenous, CpuBurnHomogenous, Idle},
     profile::{ExecutionProfile, NameTrait},
 };
 
@@ -38,6 +38,9 @@ impl ProfileBuilder {
             CommunicationHomogenous::get_name(),
             Rc::new(from_yaml::<CommunicationHomogenous>),
         );
+        constructors
+            .borrow_mut()
+            .insert(Idle::get_name(), Rc::new(from_yaml::<Idle>));
 
         let mut constructors_clone = constructors.clone();
         constructors.borrow_mut().insert(
