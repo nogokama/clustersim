@@ -19,8 +19,13 @@ pub struct ExecutionInfo {
     user: Option<String>,
 }
 
-fn tetris_function(pack_a: &ResourcesPack, pack_b: &ResourcesPack) -> u64 {
-    return pack_a.cpu as u64 * pack_b.cpu as u64 + pack_a.memory * pack_b.memory;
+fn tetris_function(pack_a: &ResourcesPack, pack_b: &ResourcesPack) -> f64 {
+    let a_len = (pack_a.cpu as f64).hypot(pack_a.memory as f64);
+    let b_len = (pack_b.cpu as f64).hypot(pack_b.memory as f64);
+    if a_len == 0. || b_len == 0. {
+        return 0.;
+    }
+    return (pack_a.cpu as u64 * pack_b.cpu as u64 + pack_a.memory * pack_b.memory) as f64 / a_len / b_len;
 }
 
 pub struct FairTetrisScheduler {
@@ -99,7 +104,9 @@ impl FairTetrisScheduler {
             let a_execution = self.queues.get(&Some(a.clone())).unwrap().front().unwrap();
             let b_execution = self.queues.get(&Some(b.clone())).unwrap().front().unwrap();
 
-            tetris_function(resources, &b_execution.resources).cmp(&tetris_function(resources, &a_execution.resources))
+            tetris_function(resources, &b_execution.resources)
+                .partial_cmp(&tetris_function(resources, &a_execution.resources))
+                .unwrap()
         });
 
         self.queues
@@ -157,7 +164,7 @@ impl Scheduler for FairTetrisScheduler {
 
         let execution_info = ExecutionInfo {
             id: execution_id,
-            resources: ResourcesPack { cpu, memory },
+            resources: ResourcesPack::new_cpu_memory(cpu, memory),
             user: user.clone(),
         };
         self.queues.get_mut(&user).unwrap().push_back(execution_info.clone());

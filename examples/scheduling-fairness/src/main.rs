@@ -1,3 +1,4 @@
+mod generator;
 mod profiles;
 mod round_robin;
 mod tetris;
@@ -11,6 +12,7 @@ use dslab_scheduling::{
     workload_generators::random::RandomWorkloadGenerator,
 };
 use env_logger::Builder;
+use generator::generate_yaml;
 use profiles::TestProfile;
 use round_robin::RoundRobinScheduler;
 use serde::Serialize;
@@ -21,7 +23,7 @@ use std::{
 use sugars::{rc, refcell};
 use tetris::FairTetrisScheduler;
 
-fn main() {
+fn simulation() {
     Builder::from_default_env()
         .format(|buf, record| writeln!(buf, "{}", record.args()))
         .init();
@@ -30,6 +32,7 @@ fn main() {
 
     // let config = SimulationConfig::from_file("configs/config.yaml");
     let config = SimulationConfig::from_file("configs/config_with_users.yaml");
+    // let config = SimulationConfig::from_file("configs/config_with_users_and_new_hosts.yaml");
     // let config = SimulationConfig::from_file("configs/config_with_native.yaml");
     // let config = SimulationConfig::from_file("configs/config_with_combinators.yaml");
     // let config = SimulationConfig::from_file("configs/config_with_custom_profiles.yaml");
@@ -42,5 +45,14 @@ fn main() {
 
     // cluster_sim.run_with_scheduler(RoundRobinScheduler::new());
 
-    cluster_sim.run_with_scheduler(FairTetrisScheduler::new(0.));
+    cluster_sim.run_with_scheduler(FairTetrisScheduler::new(1.0));
+}
+
+fn generation() {
+    generate_yaml();
+}
+
+fn main() {
+    simulation();
+    // generation();
 }

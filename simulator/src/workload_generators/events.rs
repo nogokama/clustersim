@@ -68,6 +68,17 @@ pub struct CollectionRequestEvent {
 pub struct ResourcesPack {
     pub cpu: u32,
     pub memory: u64,
+    pub disk: Option<u64>,
+}
+
+impl ResourcesPack {
+    pub fn new_cpu_memory(cpu: u32, memory: u64) -> Self {
+        Self {
+            cpu,
+            memory,
+            disk: None,
+        }
+    }
 }
 
 impl ResourcesPack {
@@ -98,6 +109,7 @@ impl ResourceRequirements {
         ResourcesPack {
             cpu: self.nodes_count * self.cpu_per_node,
             memory: self.nodes_count as u64 * self.memory_per_node,
+            disk: None,
         }
     }
 }

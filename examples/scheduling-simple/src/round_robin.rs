@@ -81,18 +81,14 @@ impl Scheduler for RoundRobinScheduler {
             memory,
         });
 
-        self.executions.insert(execution_id, ResourcesPack { cpu, memory });
+        self.executions
+            .insert(execution_id, ResourcesPack::new_cpu_memory(cpu, memory));
 
         self.schedule(ctx);
     }
     fn on_host_added(&mut self, host: HostConfig) {
-        self.available_resources.insert(
-            host.id,
-            ResourcesPack {
-                cpu: host.cpus,
-                memory: host.memory,
-            },
-        );
+        self.available_resources
+            .insert(host.id, ResourcesPack::new_cpu_memory(host.cpus, host.memory));
         self.hosts.push(host);
     }
     fn on_collection_request(

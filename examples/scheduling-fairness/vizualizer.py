@@ -103,16 +103,28 @@ for user in unique_users:
     indices = np.where((users == user))
     plt.plot(times[indices], queue_sizes[indices], label=f'{user}', linestyle='-', marker='')
 
+plt.legend()
 plt.savefig('queue_size.png')
 
 
 ##### FAIR SHARE 
 
 plt.clf()
-plt.plot(figsize=(10, 5))
-plt.xlabel('Time')
-plt.ylabel('Dominant resource share')
+plt.figure(figsize=(6, 4))
+# plt.title("Разделение ресурсов кластера (f = 1.0)")
+plt.xlabel('Время симуляции (секунды)')
+plt.ylabel('Доминантная доля пользователя')
 plt.ylim(0, 1)
+
+ax = plt.gca()
+ax.spines['top'].set_visible(False)
+ax.spines['right'].set_visible(False)
+ax.spines['bottom'].set_visible(False)
+ax.spines['left'].set_visible(False)
+ax.tick_params(axis='both', which='both', length=0)
+plt.grid(color='white')
+plt.gca().set_facecolor((0.93, 0.93, 0.93))
+
 times = []
 users = []
 shares = []
@@ -133,4 +145,40 @@ for user in unique_users:
     plt.plot(times[indices], shares[indices], label=f'{user}', linestyle='-', marker='')
 
 plt.legend()
-plt.savefig('fair_share.png')
+plt.savefig('fair_share.png', dpi=300)
+
+
+### METRICS 
+
+plt.clf()
+
+with open('load.txt', 'r') as file:
+    data = file.readlines()
+
+host_names = [] 
+cpu_usages = []
+memory_usages = []
+times = []
+
+for line in data:
+    parts = line.strip().split()
+    times.append(float(parts[0]))
+    host_names.append(parts[1])
+    cpu_usages.append(float(parts[2]))
+    memory_usages.append(float(parts[3]))
+
+times = np.array(times)
+host_names = np.array(host_names)
+cpu_usages = np.array(cpu_usages)
+memory_usages = np.array(memory_usages)
+
+indices = np.where((host_names == 'TOTAL') & (times > 1000) & (times < 5000))
+
+cpu_utilization = np.mean(cpu_usages[indices])
+memory_utilization = np.mean(memory_usages[indices])
+
+print(f"CPU Utilization: {cpu_utilization}")
+print(f"Memory Utilization: {memory_utilization}")
+
+print(f"( , {cpu_utilization}, {memory_utilization})")
+# total_utilization = cpu_usages[np.where(host_names == 'TOTAL')], memory_usages[np.where(host_names == 'TOTAL')]

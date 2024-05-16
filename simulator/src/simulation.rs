@@ -37,7 +37,7 @@ use crate::{
 
 pub struct ClusterSchedulingSimulation {
     sim: Simulation,
-    workload_generators: Vec<Box<dyn WorkloadGenerator>>,
+    workload_generators: Vec<Box<RefCell<dyn WorkloadGenerator>>>,
 
     cluster: Rc<RefCell<Cluster>>,
     proxy: Rc<RefCell<Proxy>>,
@@ -298,9 +298,9 @@ impl ClusterSchedulingSimulation {
 
         let mut total_workload_cnt: u64 = 0;
         for workload_generator in self.workload_generators.iter() {
-            let mut workload = workload_generator.get_workload(&generator_ctx);
+            let mut workload = workload_generator.borrow_mut().get_workload(&generator_ctx, None);
             total_workload_cnt += workload.len() as u64;
-            let mut collections = workload_generator.get_collections(&generator_ctx);
+            let mut collections = workload_generator.borrow_mut().get_collections(&generator_ctx);
 
             for execution_request in workload.iter_mut() {
                 if let Some(id) = execution_request.id {

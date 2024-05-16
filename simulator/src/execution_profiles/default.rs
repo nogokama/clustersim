@@ -89,28 +89,28 @@ impl NameTrait for CommunicationHomogenous {
 }
 
 #[derive(Deserialize)]
-pub struct MasterWorkers {
-    pub master_flops: f64,
-    pub worker_flops: f64,
-    pub data_transfer_bytes: f64,
+pub struct MasterWorkersProfile {
+    pub master_compute_work: f64,
+    pub worker_compute_work: f64,
+    pub data_transfer_size: f64,
 }
 
 #[async_trait(?Send)]
-impl ExecutionProfile for MasterWorkers {
+impl ExecutionProfile for MasterWorkersProfile {
     async fn run(self: Rc<Self>, processes: &Vec<HostProcessInstance>) {
         let master_process = &processes[0];
-
         let worker_processes = &processes[1..];
 
-        join_all(worker_processes.iter().map(|p| async {
-            p.run_compute(self.worker_flops, CoresDependency::Linear).await;
-            p.transfer_data_to_process(self.data_transfer_bytes, master_process.id)
+        futures::future::join_all(worker_processes.iter().map(|p| async {
+            master_process
+                .transfer_data_to_process(self.data_transfer_size, p.id)
                 .await;
+            p.run_compute(self.worker_compute_work, CoresDependency::Linear).await;
         }))
         .await;
 
         master_process
-            .run_compute(self.master_flops, CoresDependency::Linear)
+            .run_compute(self.master_compute_work, CoresDependency::Linear)
             .await;
     }
     fn name(&self) -> String {
@@ -118,7 +118,7 @@ impl ExecutionProfile for MasterWorkers {
     }
 }
 
-impl NameTrait for MasterWorkers {
+impl NameTrait for MasterWorkersProfile {
     fn get_name() -> String {
         "master-workers".to_string()
     }

@@ -202,10 +202,10 @@ impl Cluster {
                         let host = hosts.get(id).unwrap();
                         let result = HostAvailableResources {
                             host_id: *id,
-                            resources: ResourcesPack {
-                                cpu: host.compute.borrow().cores_available(),
-                                memory: host.compute.borrow().memory_available(),
-                            },
+                            resources: ResourcesPack::new_cpu_memory(
+                                host.compute.borrow().cores_available(),
+                                host.compute.borrow().memory_available(),
+                            ),
                         };
                         result
                     })
@@ -288,10 +288,10 @@ impl EventHandler for Cluster {
                     self.ctx.emit_now(
                         HostInvoked {
                             id: *id,
-                            resources: ResourcesPack {
-                                cpu: host.compute.borrow().cores_available(),
-                                memory: host.compute.borrow().memory_available(),
-                            },
+                            resources: ResourcesPack::new_cpu_memory(
+                                host.compute.borrow().cores_available(),
+                                host.compute.borrow().memory_available(),
+                            ),
                         },
                         self.scheduler_id,
                     );

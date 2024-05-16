@@ -56,7 +56,7 @@ impl NativeWorkloadGenerator {
 }
 
 impl WorkloadGenerator for NativeWorkloadGenerator {
-    fn get_workload(&self, ctx: &SimulationContext) -> Vec<ExecutionRequest> {
+    fn get_workload(&mut self, ctx: &SimulationContext, limit: Option<u64>) -> Vec<ExecutionRequest> {
         if let Some(profile_path) = &self.profile_path {
             let profiles = serde_yaml::from_str(
                 &std::fs::read_to_string(&profile_path)

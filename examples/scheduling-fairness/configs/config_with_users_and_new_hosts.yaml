@@ -1,0 +1,355 @@
+--- 
+workload:
+  - type: Random
+    options: 
+      execution_count: 1500
+      cpu_min: 3
+      cpu_max: 5
+      memory_min: 4
+      memory_max: 5
+      delay_min: 1
+      delay_max: 4
+      duration_mean: 180
+      duration_dev: 30
+      collection_id: 0
+      user: user0
+  - type: Random
+    options: 
+      execution_count: 400
+      cpu_min: 7
+      cpu_max: 9
+      memory_min: 5
+      memory_max: 7
+      delay_min: 1
+      delay_max: 4
+      duration_mean: 220
+      duration_dev: 30
+      collection_id: 1
+      user: user1
+  - type: Random
+    options: 
+      execution_count: 800
+      cpu_min: 1
+      cpu_max: 1
+      memory_min: 15
+      memory_max: 20
+      delay_min: 1
+      delay_max: 4
+      duration_mean: 300
+      duration_dev: 30
+      collection_id: 2
+      user: user2
+  - type: Random
+    options: 
+      execution_count: 1100
+      cpu_min: 5
+      cpu_max: 6
+      memory_min: 5
+      memory_max: 7
+      delay_min: 1
+      delay_max: 4
+      duration_mean: 160
+      duration_dev: 10
+      collection_id: 3
+      user: user3
+  - type: Random
+    options: 
+      execution_count: 3000
+      cpu_min: 1
+      cpu_max: 1
+      memory_min: 4
+      memory_max: 5
+      delay_min: 1
+      delay_max: 4
+      duration_mean: 250
+      duration_dev: 40
+      collection_id: 4
+      user: user4
+  - type: Random
+    options: 
+      execution_count: 1000
+      cpu_min: 1
+      cpu_max: 1
+      memory_min: 10
+      memory_max: 15
+      delay_min: 1
+      delay_max: 4
+      duration_mean: 400
+      duration_dev: 40
+      collection_id: 5
+      user: user5
+  - type: Random
+    options: 
+      execution_count: 2600
+      cpu_min: 2
+      cpu_max: 2
+      memory_min: 5
+      memory_max: 6
+      delay_min: 1
+      delay_max: 4
+      duration_mean: 250
+      duration_dev: 30
+      collection_id: 6
+      user: user6
+  - type: Random
+    options: 
+      execution_count: 2200
+      cpu_min: 2
+      cpu_max: 2
+      memory_min: 7
+      memory_max: 10
+      delay_min: 1
+      delay_max: 4
+      duration_mean: 300
+      duration_dev: 40
+      collection_id: 7
+      user: user7
+  - type: Random
+    options: 
+      execution_count: 200
+      cpu_min: 7
+      cpu_max: 10
+      memory_min: 5
+      memory_max: 6
+      delay_min: 1
+      delay_max: 4
+      duration_mean: 800
+      duration_dev: 200
+      collection_id: 8
+      user: user8
+  - type: Random
+    options: 
+      execution_count: 2000
+      cpu_min: 2
+      cpu_max: 3
+      memory_min: 5
+      memory_max: 9
+      delay_min: 1
+      delay_max: 4
+      duration_mean: 250
+      duration_dev: 30
+      collection_id: 9
+      user: user9
+
+
+hosts: 
+  - name: group-5-20
+    name_prefix: group-5-20
+    cpus: 5
+    memory: 20
+    count: 1
+  - name: group-5-40
+    name_prefix: group-5-40
+    cpus: 5
+    memory: 40
+    count: 2
+  - name: group-7-20
+    name_prefix: group-7-20
+    cpus: 7
+    memory: 20
+    count: 1
+  - name: group-7-30
+    name_prefix: group-7-30
+    cpus: 7
+    memory: 30
+    count: 1
+  - name: group-7-40
+    name_prefix: group-7-40
+    cpus: 7
+    memory: 40
+    count: 1
+  - name: group-7-50
+    name_prefix: group-7-50
+    cpus: 7
+    memory: 50
+    count: 2
+  - name: group-7-80
+    name_prefix: group-7-80
+    cpus: 7
+    memory: 80
+    count: 2
+  - name: group-10-10
+    name_prefix: group-10-10
+    cpus: 10
+    memory: 10
+    count: 2
+  - name: group-10-30
+    name_prefix: group-10-30
+    cpus: 10
+    memory: 30
+    count: 2
+  - name: group-10-40
+    name_prefix: group-10-40
+    cpus: 10
+    memory: 40
+    count: 1
+  - name: group-10-50
+    name_prefix: group-10-50
+    cpus: 10
+    memory: 50
+    count: 2
+  - name: group-10-60
+    name_prefix: group-10-60
+    cpus: 10
+    memory: 60
+    count: 2
+  - name: group-10-70
+    name_prefix: group-10-70
+    cpus: 10
+    memory: 70
+    count: 1
+  - name: group-12-20
+    name_prefix: group-12-20
+    cpus: 12
+    memory: 20
+    count: 1
+  - name: group-12-30
+    name_prefix: group-12-30
+    cpus: 12
+    memory: 30
+    count: 1
+  - name: group-12-40
+    name_prefix: group-12-40
+    cpus: 12
+    memory: 40
+    count: 1
+  - name: group-12-50
+    name_prefix: group-12-50
+    cpus: 12
+    memory: 50
+    count: 2
+  - name: group-12-60
+    name_prefix: group-12-60
+    cpus: 12
+    memory: 60
+    count: 2
+  - name: group-13-40
+    name_prefix: group-13-40
+    cpus: 13
+    memory: 40
+    count: 1
+  - name: group-13-50
+    name_prefix: group-13-50
+    cpus: 13
+    memory: 50
+    count: 2
+  - name: group-13-70
+    name_prefix: group-13-70
+    cpus: 13
+    memory: 70
+    count: 1
+  - name: group-16-20
+    name_prefix: group-16-20
+    cpus: 16
+    memory: 20
+    count: 2
+  - name: group-16-40
+    name_prefix: group-16-40
+    cpus: 16
+    memory: 40
+    count: 4
+  - name: group-16-50
+    name_prefix: group-16-50
+    cpus: 16
+    memory: 50
+    count: 2
+  - name: group-16-60
+    name_prefix: group-16-60
+    cpus: 16
+    memory: 60
+    count: 1
+  - name: group-16-70
+    name_prefix: group-16-70
+    cpus: 16
+    memory: 70
+    count: 1
+  - name: group-16-80
+    name_prefix: group-16-80
+    cpus: 16
+    memory: 80
+    count: 2
+  - name: group-17-40
+    name_prefix: group-17-40
+    cpus: 17
+    memory: 40
+    count: 1
+  - name: group-17-90
+    name_prefix: group-17-90
+    cpus: 17
+    memory: 90
+    count: 2
+  - name: group-18-50
+    name_prefix: group-18-50
+    cpus: 18
+    memory: 50
+    count: 1
+  - name: group-18-60
+    name_prefix: group-18-60
+    cpus: 18
+    memory: 60
+    count: 2
+  - name: group-20-30
+    name_prefix: group-20-30
+    cpus: 20
+    memory: 30
+    count: 1
+  - name: group-20-50
+    name_prefix: group-20-50
+    cpus: 20
+    memory: 50
+    count: 3
+  - name: group-20-70
+    name_prefix: group-20-70
+    cpus: 20
+    memory: 70
+    count: 2
+  - name: group-24-30
+    name_prefix: group-24-30
+    cpus: 24
+    memory: 30
+    count: 2
+  - name: group-24-40
+    name_prefix: group-24-40
+    cpus: 24
+    memory: 40
+    count: 2
+  - name: group-24-60
+    name_prefix: group-24-60
+    cpus: 24
+    memory: 60
+    count: 1
+  - name: group-24-80
+    name_prefix: group-24-80
+    cpus: 24
+    memory: 80
+    count: 3
+  - name: group-28-30
+    name_prefix: group-28-30
+    cpus: 28
+    memory: 30
+    count: 1
+  - name: group-28-50
+    name_prefix: group-28-50
+    cpus: 28
+    memory: 50
+    count: 1
+  - name: group-28-60
+    name_prefix: group-28-60
+    cpus: 28
+    memory: 60
+    count: 1
+  - name: group-28-70
+    name_prefix: group-28-70
+    cpus: 28
+    memory: 70
+    count: 1
+  
+
+monitoring:
+  host_load_compression_time_interval: 100
+  scheduler_queue_compression_time_interval: 100
+  display_host_load: false 
+  collect_user_queues: true
+
+scheduler:
+  hosts_invoke_interval: 10

@@ -15,7 +15,7 @@ use super::{
 
 #[derive(Serialize, Deserialize)]
 pub struct RandomWorkloadGenerator {
-    jobs_count: u32,
+    execution_count: u32,
     cpu_min: u32,
     cpu_max: u32,
     memory_min: u64,
@@ -38,15 +38,15 @@ impl RandomWorkloadGenerator {
 }
 
 impl WorkloadGenerator for RandomWorkloadGenerator {
-    fn get_workload(&self, ctx: &SimulationContext) -> Vec<ExecutionRequest> {
+    fn get_workload(&mut self, ctx: &SimulationContext, limit: Option<u64>) -> Vec<ExecutionRequest> {
         let mut workload = Vec::new();
-        workload.reserve(self.jobs_count as usize);
+        workload.reserve(self.execution_count as usize);
 
         let mut time = self.start_time.unwrap_or(0.) + 1.;
 
         let time_distribution = rand_distr::Normal::new(self.duration_mean, self.duration_dev).unwrap();
 
-        for _id in 0..self.jobs_count as u64 {
+        for _id in 0..self.execution_count as u64 {
             let execution_time = ctx.sample_from_distribution(&time_distribution);
             let job = ExecutionRequest {
                 id: None,

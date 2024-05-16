@@ -114,7 +114,7 @@ struct ExecutionDefinition {
 }
 
 impl WorkloadGenerator for GoogleTraceWorkloadGenerator {
-    fn get_workload(&self, ctx: &dslab_core::SimulationContext) -> Vec<ExecutionRequest> {
+    fn get_workload(&mut self, ctx: &dslab_core::SimulationContext, limit: Option<u64>) -> Vec<ExecutionRequest> {
         self.parse_workload()
             .iter()
             .map(|d| {

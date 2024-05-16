@@ -1,6 +1,6 @@
 //! VM dataset types.
 
-use std::{collections::HashMap, str::FromStr};
+use std::{cell::RefCell, collections::HashMap, str::FromStr};
 
 use log::warn;
 use serde::{Deserialize, Serialize};
@@ -44,21 +44,21 @@ impl FromStr for WorkloadType {
 pub fn workload_resolver(
     config: &ClusterWorkloadConfig,
     profile_builder: ProfileBuilder,
-) -> Box<dyn WorkloadGenerator> {
+) -> Box<RefCell<dyn WorkloadGenerator>> {
     let workload_type = WorkloadType::from_str(&config.r#type).unwrap();
     let options = config.options.clone();
     let path = config.path.clone();
 
     match workload_type {
-        WorkloadType::Random => Box::new(RandomWorkloadGenerator::from_options(
+        WorkloadType::Random => Box::new(RefCell::new(RandomWorkloadGenerator::from_options(
             options.as_ref().expect("Random workload options are required"),
-        )),
-        WorkloadType::Google => Box::new(GoogleTraceWorkloadGenerator::from_options(
+        ))),
+        WorkloadType::Google => Box::new(RefCell::new(GoogleTraceWorkloadGenerator::from_options(
             options.as_ref().expect("Google trace workload options are required"),
-        )),
+        ))),
         WorkloadType::Alibaba => unimplemented!(),
         WorkloadType::SWF => unimplemented!(),
-        WorkloadType::Native => Box::new(NativeWorkloadGenerator::new(
+        WorkloadType::Native => Box::new(RefCell::new(NativeWorkloadGenerator::new(
             path.expect("Native workload path is required"),
             options
                 .as_ref()
@@ -71,6 +71,6 @@ pub fn workload_resolver(
                 .get("collections_path")
                 .map(|f| f.as_str().unwrap().to_string()),
             profile_builder,
-        )),
+        ))),
     }
 }
