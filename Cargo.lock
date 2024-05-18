@@ -12,6 +12,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "alibaba-trace"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "clap",
+ "dslab-compute",
+ "dslab-core",
+ "dslab-network",
+ "dslab-scheduling",
+ "dslab-storage",
+ "env_logger",
+ "futures",
+ "log",
+ "num-traits",
+ "serde",
+ "serde_yaml",
+ "sugars",
+]
+
+[[package]]
 name = "anyhow"
 version = "1.0.83"
 source = "registry+https://github.com/rust-lang/crates.io-index"

@@ -1,10 +1,11 @@
 use dslab_core::SimulationContext;
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 
 use crate::execution_profiles::builder::{ProfileBuilder, ProfileDefinition};
 
 use super::{
-    events::{ExecutionRequest, ResourceRequirements},
+    events::{CollectionRequest, ExecutionRequest, ResourceRequirements},
     generator::WorkloadGenerator,
 };
 
@@ -27,37 +28,38 @@ pub struct NativeExecutionDefinition {
     pub execution_index: Option<u64>,
 }
 
-pub struct NativeWorkloadGenerator {
-    workload: Vec<NativeExecutionDefinition>,
-    profile_builder: ProfileBuilder,
+#[derive(Deserialize)]
+struct NativeWorkloadGeneratorOptions {
+    path: String,
     profile_path: Option<String>,
     collections_path: Option<String>,
 }
 
+pub struct NativeWorkloadGenerator {
+    workload: Vec<NativeExecutionDefinition>,
+    profile_builder: ProfileBuilder,
+    options: NativeWorkloadGeneratorOptions,
+}
+
 impl NativeWorkloadGenerator {
-    pub fn new(
-        path: String,
-        profile_path: Option<String>,
-        collections_path: Option<String>,
-        mut profile_builder: ProfileBuilder,
-    ) -> NativeWorkloadGenerator {
+    pub fn from_options_and_builder(options: &serde_yaml::Value, profile_builder: ProfileBuilder) -> Self {
+        let options: NativeWorkloadGeneratorOptions = serde_yaml::from_value(options.clone()).unwrap();
         let jobs: Vec<NativeExecutionDefinition> = serde_yaml::from_str(
-            &std::fs::read_to_string(&path).unwrap_or_else(|_| panic!("Can't read file {}", path)),
+            &std::fs::read_to_string(&options.path).unwrap_or_else(|_| panic!("Can't read file {}", options.path)),
         )
-        .unwrap_or_else(|reason| panic!("Can't parse YAML from file {}: {}", path, reason));
+        .unwrap_or_else(|reason| panic!("Can't parse YAML from file {}: {}", options.path, reason));
 
         NativeWorkloadGenerator {
             workload: jobs,
             profile_builder,
-            profile_path,
-            collections_path,
+            options,
         }
     }
 }
 
 impl WorkloadGenerator for NativeWorkloadGenerator {
     fn get_workload(&mut self, ctx: &SimulationContext, limit: Option<u64>) -> Vec<ExecutionRequest> {
-        if let Some(profile_path) = &self.profile_path {
+        if let Some(profile_path) = &self.options.profile_path {
             let profiles = serde_yaml::from_str(
                 &std::fs::read_to_string(&profile_path)
                     .unwrap_or_else(|e| panic!("Can't read file {}: {}", profile_path, e)),
@@ -85,5 +87,19 @@ impl WorkloadGenerator for NativeWorkloadGenerator {
             .collect::<Vec<_>>();
 
         workload
+    }
+
+    fn get_collections(&self, ctx: &SimulationContext) -> Vec<CollectionRequest> {
+        if let Some(collections_path) = &self.options.collections_path {
+            let collections: Vec<CollectionRequest> = serde_json::from_str(
+                &std::fs::read_to_string(collections_path)
+                    .unwrap_or_else(|e| panic!("Can't read file {}: {}", collections_path, e)),
+            )
+            .unwrap_or_else(|e| panic!("Can't parse JSON from file {}: {}", collections_path, e));
+
+            collections
+        } else {
+            vec![]
+        }
     }
 }

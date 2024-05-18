@@ -143,6 +143,9 @@ pub struct MonitoringConfig {
     pub scheduler_queue_compression_time_interval: Option<f64>,
     pub display_host_load: Option<bool>,
     pub collect_user_queues: Option<bool>,
+    pub host_logs_file_name: Option<String>,
+    pub scheduler_queue_logs_file_name: Option<String>,
+    pub fair_share_logs_file_name: Option<String>,
 }
 
 impl Default for MonitoringConfig {
@@ -152,6 +155,9 @@ impl Default for MonitoringConfig {
             scheduler_queue_compression_time_interval: None,
             display_host_load: Some(true),
             collect_user_queues: Some(true),
+            host_logs_file_name: None,
+            scheduler_queue_logs_file_name: None,
+            fair_share_logs_file_name: None,
         }
     }
 }

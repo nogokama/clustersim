@@ -1,5 +1,5 @@
 use core::{panic, time};
-use std::{cell::RefCell, collections::HashSet, rc::Rc, vec};
+use std::{cell::RefCell, collections::HashSet, rc::Rc, time::Instant, vec};
 
 use dslab_compute::multicore::{
     AllocationFailed, AllocationSuccess, CompFinished, CompStarted, Compute, DeallocationSuccess,
@@ -272,8 +272,16 @@ impl ClusterSchedulingSimulation {
 
         self.cluster.borrow_mut().start(expected_workload_cnt);
 
+        let t = Instant::now();
+
+        println!("Simulation Started");
+
         // TODO for long simulation make a while loop
         self.sim.step_until_no_events();
+
+        let elapsed = t.elapsed();
+
+        println!("SIMULATION FINISHED IN: {:?}", elapsed.as_secs_f64());
 
         println!("SIMULATION FINISHED AT: {}", self.sim.time());
     }

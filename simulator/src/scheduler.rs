@@ -16,9 +16,26 @@ pub struct HostAvailableResources {
     pub resources: ResourcesPack,
 }
 
+#[derive(Default, Clone, Serialize)]
+pub struct SchedulerStats {
+    pub on_host_added_cnt: Option<u64>,
+    pub on_host_added_time: Option<u64>,
+    pub on_execution_request_cnt: Option<u64>,
+    pub on_execution_request_time: Option<u64>,
+    pub on_collection_request_cnt: Option<u64>,
+    pub on_collection_request_time: Option<u64>,
+    pub on_execution_finished_cnt: Option<u64>,
+    pub on_execution_finished_time: Option<u64>,
+    pub on_host_resources_cnt: Option<u64>,
+    pub on_host_resources_time: Option<u64>,
+}
+
 pub trait CustomScheduler {
     fn name(&self) -> String;
     fn id(&self) -> Id;
+    fn get_stats(&self) -> SchedulerStats {
+        SchedulerStats::default()
+    }
 }
 
 pub struct SchedulerContext {

@@ -1,6 +1,10 @@
 //! VM dataset types.
 
-use std::{cell::RefCell, collections::HashMap, str::FromStr};
+use std::{
+    cell::{Ref, RefCell},
+    collections::HashMap,
+    str::FromStr,
+};
 
 use log::warn;
 use serde::{Deserialize, Serialize};
@@ -11,7 +15,8 @@ use crate::{
 };
 
 use super::{
-    generator::WorkloadGenerator, google_trace_reader::GoogleTraceWorkloadGenerator, native::NativeWorkloadGenerator,
+    alibaba_trace_reader::AlibabaTraceReader, generator::WorkloadGenerator,
+    google_trace_reader::GoogleTraceWorkloadGenerator, native::NativeWorkloadGenerator,
     random::RandomWorkloadGenerator,
 };
 
@@ -56,20 +61,12 @@ pub fn workload_resolver(
         WorkloadType::Google => Box::new(RefCell::new(GoogleTraceWorkloadGenerator::from_options(
             options.as_ref().expect("Google trace workload options are required"),
         ))),
-        WorkloadType::Alibaba => unimplemented!(),
+        WorkloadType::Alibaba => Box::new(RefCell::new(AlibabaTraceReader::from_options(
+            options.as_ref().expect("Alibaba trace workload options are required"),
+        ))),
         WorkloadType::SWF => unimplemented!(),
-        WorkloadType::Native => Box::new(RefCell::new(NativeWorkloadGenerator::new(
-            path.expect("Native workload path is required"),
-            options
-                .as_ref()
-                .unwrap_or(&serde_yaml::Value::Null)
-                .get("profile_path")
-                .map(|f| f.as_str().unwrap().to_string()),
-            options
-                .as_ref()
-                .unwrap_or(&serde_yaml::Value::Null)
-                .get("collections_path")
-                .map(|f| f.as_str().unwrap().to_string()),
+        WorkloadType::Native => Box::new(RefCell::new(NativeWorkloadGenerator::from_options_and_builder(
+            options.as_ref().expect("Native workload options are required"),
             profile_builder,
         ))),
     }

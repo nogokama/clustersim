@@ -5,6 +5,7 @@ use std::{
     io::{BufWriter, Write},
 };
 
+use csv::Writer;
 use dslab_core::Id;
 use serde::Serialize;
 
@@ -240,12 +241,21 @@ pub struct Monitoring {
 
 impl Monitoring {
     pub fn new(config: MonitoringConfig) -> Monitoring {
-        let host_log_file_path = "load.txt";
-        let scheduler_log_file_path = "scheduler_info.txt";
-        let fair_share_log_file_path = "fair_share.txt";
-        let host_log_file = BufWriter::new(File::create(&host_log_file_path).unwrap());
-        let scheduler_log_file = BufWriter::new(File::create(&scheduler_log_file_path).unwrap());
-        let fair_share_log_file = BufWriter::new(File::create(&fair_share_log_file_path).unwrap());
+        let host_log_file_path = &config.host_logs_file_name.unwrap_or("load.txt".to_string());
+        let scheduler_log_file_path = &config
+            .scheduler_queue_logs_file_name
+            .unwrap_or("scheduler_info.txt".to_string());
+        let fair_share_log_file_path = config.fair_share_logs_file_name.unwrap_or("fair_share.txt".to_string());
+
+        let mut host_log_file =
+            BufWriter::new(File::create(&host_log_file_path).expect("Failed to create hosts load log file"));
+        writeln!(&mut host_log_file, "time,name,cpu_load,memory_load,disk_load").unwrap();
+
+        let mut scheduler_log_file = BufWriter::new(File::create(&scheduler_log_file_path).unwrap());
+        writeln!(&mut scheduler_log_file, "time,queue_size,user").unwrap();
+
+        let mut fair_share_log_file = BufWriter::new(File::create(&fair_share_log_file_path).unwrap());
+        writeln!(&mut fair_share_log_file, "time,user,share").unwrap();
 
         Monitoring {
             hosts: HashMap::new(),
@@ -372,12 +382,12 @@ impl Monitoring {
     fn dump_load(&mut self, state: MonitoringState, time: f64, name: &str) {
         writeln!(
             &mut self.host_log_file,
-            "{} {} {} {}",
+            "{},{},{},{},{}",
             time,
             name,
             state.cpu,
             state.memory,
-            // state.disk.unwrap_or(0.)
+            state.disk.unwrap_or(0.)
         )
         .unwrap();
     }
@@ -385,7 +395,7 @@ impl Monitoring {
     fn dump_scheduler_queue_size(&mut self, time: f64, value: f64, user: Option<&str>) {
         writeln!(
             &mut self.scheduler_log_file,
-            "{} {} {}",
+            "{},{},{}",
             time,
             value,
             user.unwrap_or("TOTAL")
@@ -394,6 +404,6 @@ impl Monitoring {
     }
 
     fn dump_dominant_share(&mut self, time: f64, user: &str, value: f64) {
-        writeln!(&mut self.fair_share_log_file, "{} {} {}", time, user, value).unwrap();
+        writeln!(&mut self.fair_share_log_file, "{},{},{}", time, user, value).unwrap();
     }
 }

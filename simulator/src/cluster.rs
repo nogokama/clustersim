@@ -1,6 +1,6 @@
 use std::{
     cell::RefCell,
-    collections::{HashMap, HashSet},
+    collections::{HashMap, HashSet, VecDeque},
     rc::Rc,
 };
 
@@ -72,6 +72,7 @@ pub(crate) struct Cluster {
     hosts_invoke_interval: Option<f64>,
     expected_execution_count: u64,
     total_execution_count: u64,
+    notification_count_values: VecDeque<u64>,
 }
 
 impl Cluster {
@@ -95,6 +96,7 @@ impl Cluster {
             hosts_invoke_interval,
             expected_execution_count: 0,
             total_execution_count: 0,
+            notification_count_values: VecDeque::new(),
         }
     }
 
@@ -103,6 +105,11 @@ impl Cluster {
 
         if self.hosts_invoke_interval.is_some() {
             self.ctx.emit_self_now(InvokingHosts {});
+        }
+
+        for i in 0..100 {
+            self.notification_count_values
+                .push_back(i * expected_execution_count / 100);
         }
     }
 
@@ -164,14 +171,14 @@ impl Cluster {
             .borrow_mut()
             .add_scheduler_queue_size(self.ctx.time(), -1, user.clone());
 
-        log_info!(
+        log_debug!(
             self.ctx,
             "start job: {}, profile: {}",
             request.id.unwrap(),
             request.profile.clone().as_ref().name()
         );
         request.profile.clone().run(&processes).await;
-        log_info!(
+        log_debug!(
             self.ctx,
             "finish job: {}, profile: {}",
             request.id.unwrap(),
@@ -276,6 +283,17 @@ impl EventHandler for Cluster {
                 log_debug!(self.ctx, "schedule job: {} on hosts: {:?}", execution_id, host_ids);
                 self.schedule_execution(host_ids, execution_id);
                 self.total_execution_count += 1;
+                if !self.notification_count_values.is_empty()
+                    && self.total_execution_count >= self.notification_count_values[0]
+                {
+                    log_info!(
+                        self.ctx,
+                        "completed {}% of executions",
+                        self.notification_count_values.pop_front().unwrap() as f64
+                            / self.expected_execution_count as f64
+                            * 100.0
+                    );
+                }
             }
             CancelExecution { execution_id } => {
                 self.cancel_execution(execution_id);

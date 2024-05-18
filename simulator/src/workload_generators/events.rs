@@ -42,6 +42,25 @@ impl ExecutionRequest {
             priority: None,
         }
     }
+    pub fn simple_with_id(
+        id: u64,
+        time: f64,
+        resources: ResourceRequirements,
+        profile: Rc<dyn ExecutionProfile>,
+    ) -> Self {
+        Self {
+            id: Some(id),
+            name: None,
+            collection_id: None,
+            execution_index: None,
+            time,
+            schedule_after: None,
+            resources,
+            profile,
+            wall_time_limit: None,
+            priority: None,
+        }
+    }
 }
 
 #[derive(Serialize, Clone)]
@@ -51,7 +70,7 @@ pub struct CancelRequest {
     pub time: f64,
 }
 
-#[derive(Serialize, Clone)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct CollectionRequest {
     pub id: Option<u64>,
     pub time: f64,
@@ -64,7 +83,7 @@ pub struct CollectionRequestEvent {
     pub request: CollectionRequest,
 }
 
-#[derive(Clone, Copy, Serialize, Default)]
+#[derive(Clone, Copy, Serialize, Default, Debug)]
 pub struct ResourcesPack {
     pub cpu: u32,
     pub memory: u64,
@@ -110,6 +129,14 @@ impl ResourceRequirements {
             cpu: self.nodes_count * self.cpu_per_node,
             memory: self.nodes_count as u64 * self.memory_per_node,
             disk: None,
+        }
+    }
+
+    pub fn simple(cpu: u32, memory: u64) -> Self {
+        Self {
+            nodes_count: 1,
+            cpu_per_node: cpu,
+            memory_per_node: memory,
         }
     }
 }
