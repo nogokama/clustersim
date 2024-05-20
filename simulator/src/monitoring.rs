@@ -279,6 +279,7 @@ impl Monitoring {
             OpenOptions::new()
                 .write(true)
                 .create(true)
+                .truncate(true)
                 .open(&host_log_file_path)
                 .expect("Failed to create hosts load log file"),
         );
@@ -292,7 +293,8 @@ impl Monitoring {
             OpenOptions::new()
                 .write(true)
                 .create(true)
-                .open(&scheduler_log_file_path)
+                .truncate(true)
+                .open(scheduler_log_file_path)
                 .unwrap(),
         );
         writeln!(&mut scheduler_log_file, "time,queue_size,user").unwrap();
@@ -301,7 +303,8 @@ impl Monitoring {
             OpenOptions::new()
                 .write(true)
                 .create(true)
-                .open(&fair_share_log_file_path)
+                .truncate(true)
+                .open(fair_share_log_file_path)
                 .unwrap(),
         );
         writeln!(&mut fair_share_log_file, "time,user,share").unwrap();
