@@ -304,7 +304,9 @@ impl ClusterSchedulingSimulation {
 
         self.proxy.borrow_mut().set_scheduler(scheduler_id);
 
-        self.workload_queue_watcher.borrow_mut().generate_workload();
+        self.workload_queue_watcher
+            .borrow_mut()
+            .generate_workload(true);
 
         self.cluster.borrow_mut().start();
 

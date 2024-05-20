@@ -14,7 +14,7 @@ use super::{
 };
 
 #[derive(Serialize, Deserialize)]
-pub struct RandomWorkloadGenerator {
+struct Options {
     execution_count: u32,
     cpu_min: u32,
     cpu_max: u32,
@@ -31,22 +31,52 @@ pub struct RandomWorkloadGenerator {
     collection_id: Option<u64>,
 }
 
+#[derive(Serialize, Deserialize)]
+pub struct RandomWorkloadGenerator {
+    options: Options,
+    execution_last_time: f64,
+    remaining_executions_count: u64,
+}
+
 impl RandomWorkloadGenerator {
     pub fn from_options(options: &serde_yaml::Value) -> Self {
-        serde_yaml::from_value(options.clone()).unwrap()
+        let options: Options = serde_yaml::from_value(options.clone()).unwrap();
+        let remaining_executions_count = options.execution_count as u64;
+        Self {
+            options,
+            execution_last_time: 0.,
+            remaining_executions_count,
+        }
     }
 }
 
 impl WorkloadGenerator for RandomWorkloadGenerator {
-    fn get_workload(&mut self, ctx: &SimulationContext, limit: Option<u64>) -> Vec<ExecutionRequest> {
+    fn get_workload(
+        &mut self,
+        ctx: &SimulationContext,
+        limit: Option<u64>,
+    ) -> Vec<ExecutionRequest> {
         let mut workload = Vec::new();
-        workload.reserve(self.execution_count as usize);
 
-        let mut time = self.start_time.unwrap_or(0.) + 1.;
+        let limit = if let Some(limit) = limit {
+            limit.min(self.remaining_executions_count)
+        } else {
+            self.remaining_executions_count
+        };
 
-        let time_distribution = rand_distr::Normal::new(self.duration_mean, self.duration_dev).unwrap();
+        self.remaining_executions_count -= limit;
 
-        for _id in 0..self.execution_count as u64 {
+        workload.reserve(limit as usize);
+
+        let mut time = self.options.start_time.unwrap_or(0.) + 1.;
+        if self.execution_last_time >= time {
+            time = self.execution_last_time;
+        }
+
+        let time_distribution =
+            rand_distr::Normal::new(self.options.duration_mean, self.options.duration_dev).unwrap();
+
+        for _id in 0..limit as u64 {
             let execution_time = ctx.sample_from_distribution(&time_distribution);
             let job = ExecutionRequest {
                 id: None,
@@ -54,32 +84,39 @@ impl WorkloadGenerator for RandomWorkloadGenerator {
                 time,
                 resources: ResourceRequirements {
                     nodes_count: 1,
-                    cpu_per_node: ctx.gen_range(self.cpu_min..=self.cpu_max),
-                    memory_per_node: ctx.gen_range(self.memory_min..=self.memory_max),
+                    cpu_per_node: ctx.gen_range(self.options.cpu_min..=self.options.cpu_max),
+                    memory_per_node: ctx
+                        .gen_range(self.options.memory_min..=self.options.memory_max),
                 },
-                collection_id: self.collection_id,
+                collection_id: self.options.collection_id,
                 execution_index: None,
                 schedule_after: None,
                 wall_time_limit: None,
                 priority: None,
                 profile: Rc::new(Idle {
-                    time: if execution_time > 1. { execution_time } else { 1. },
+                    time: if execution_time > 1. {
+                        execution_time
+                    } else {
+                        1.
+                    },
                 }),
             };
 
-            time += ctx.gen_range(self.delay_min..=self.delay_max);
+            time += ctx.gen_range(self.options.delay_min..=self.options.delay_max);
 
             workload.push(job);
         }
+
+        self.execution_last_time = time;
 
         workload
     }
 
     fn get_collections(&self, _ctx: &SimulationContext) -> Vec<super::events::CollectionRequest> {
         vec![CollectionRequest {
-            id: self.collection_id,
-            time: self.start_time.unwrap_or(0.),
-            user: self.user.clone(),
+            id: self.options.collection_id,
+            time: self.options.start_time.unwrap_or(0.),
+            user: self.options.user.clone(),
             priority: None,
         }]
     }

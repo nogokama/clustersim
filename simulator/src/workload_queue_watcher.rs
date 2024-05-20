@@ -79,7 +79,7 @@ impl WorkloadQueueWatcher {
         }
     }
 
-    pub fn generate_workload(&mut self) -> u64 {
+    pub fn generate_workload(&mut self, generate_collections: bool) -> u64 {
         let mut total_workload_cnt: u64 = 0;
 
         for generator_id in 0..self.workload_generators.len() {
@@ -90,7 +90,7 @@ impl WorkloadQueueWatcher {
             while self.generators_last_time[generator_id]
                 < self.ctx.time() + WORKLOAD_GENERATION_CHECK_INTERVAL * 2.
             {
-                let generated = self.generate_workload_by(generator_id);
+                let generated = self.generate_workload_by(generator_id, generate_collections);
                 if generated == 0 {
                     log_info!(self.ctx, "Workload generator {} completed", generator_id);
                     self.generators_completed.insert(generator_id);
@@ -117,7 +117,7 @@ impl WorkloadQueueWatcher {
         total_workload_cnt
     }
 
-    fn generate_workload_by(&mut self, generator_id: usize) -> u64 {
+    fn generate_workload_by(&mut self, generator_id: usize, generate_collections: bool) -> u64 {
         let workload_generator = &self.workload_generators[generator_id];
 
         let mut workload = workload_generator
@@ -131,7 +131,11 @@ impl WorkloadQueueWatcher {
         );
 
         let workload_cnt = workload.len() as u64;
-        let mut collections = workload_generator.borrow_mut().get_collections(&self.ctx);
+        let mut collections = if generate_collections {
+            workload_generator.borrow_mut().get_collections(&self.ctx)
+        } else {
+            vec![]
+        };
 
         for execution_request in workload.iter_mut() {
             if let Some(id) = execution_request.id {
@@ -216,7 +220,7 @@ impl EventHandler for WorkloadQueueWatcher {
     fn on(&mut self, event: dslab_core::Event) {
         cast!(match event.data {
             CheckWorkloadGeneration {} => {
-                self.generate_workload();
+                self.generate_workload(false);
             }
         });
     }

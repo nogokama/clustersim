@@ -2,37 +2,37 @@
 workload:
   - type: Random
     options: 
-      execution_count: 1500
-      cpu_min: 3
+      execution_count: 1000
+      cpu_min: 5
       cpu_max: 5
       memory_min: 4
-      memory_max: 5
+      memory_max: 4
       delay_min: 1
       delay_max: 4
       duration_mean: 180
       duration_dev: 30
       collection_id: 0
-      user: user0
+      user: user6
   - type: Random
     options: 
       execution_count: 400
-      cpu_min: 7
-      cpu_max: 9
-      memory_min: 5
-      memory_max: 7
+      cpu_min: 10
+      cpu_max: 10
+      memory_min: 2
+      memory_max: 2
       delay_min: 1
       delay_max: 4
       duration_mean: 220
       duration_dev: 30
       collection_id: 1
-      user: user1
+      user: user9
   - type: Random
     options: 
       execution_count: 800
       cpu_min: 1
       cpu_max: 1
       memory_min: 15
-      memory_max: 20
+      memory_max: 15
       delay_min: 1
       delay_max: 4
       duration_mean: 300
@@ -41,76 +41,76 @@ workload:
       user: user2
   - type: Random
     options: 
-      execution_count: 1100
+      execution_count: 700
       cpu_min: 5
-      cpu_max: 6
+      cpu_max: 5
       memory_min: 5
-      memory_max: 7
+      memory_max: 5
       delay_min: 1
       delay_max: 4
       duration_mean: 160
       duration_dev: 10
       collection_id: 3
-      user: user3
+      user: user7
   - type: Random
     options: 
-      execution_count: 3000
+      execution_count: 1500
       cpu_min: 1
       cpu_max: 1
-      memory_min: 4
+      memory_min: 5
       memory_max: 5
       delay_min: 1
       delay_max: 4
       duration_mean: 250
       duration_dev: 40
       collection_id: 4
-      user: user4
+      user: user0
   - type: Random
     options: 
-      execution_count: 1000
+      execution_count: 800
       cpu_min: 1
       cpu_max: 1
       memory_min: 10
-      memory_max: 15
+      memory_max: 10
       delay_min: 1
       delay_max: 4
       duration_mean: 400
       duration_dev: 40
       collection_id: 5
-      user: user5
+      user: user1
   - type: Random
     options: 
-      execution_count: 2600
+      execution_count: 1300
       cpu_min: 2
       cpu_max: 2
       memory_min: 5
-      memory_max: 6
+      memory_max: 5
       delay_min: 1
       delay_max: 4
       duration_mean: 250
       duration_dev: 30
       collection_id: 6
-      user: user6
+      user: user3
   - type: Random
     options: 
-      execution_count: 2200
+      execution_count: 800
       cpu_min: 2
       cpu_max: 2
       memory_min: 7
-      memory_max: 10
+      memory_max: 7
       delay_min: 1
       delay_max: 4
       duration_mean: 300
       duration_dev: 40
       collection_id: 7
-      user: user7
+      user: user5
   - type: Random
     options: 
       execution_count: 200
       cpu_min: 7
-      cpu_max: 10
+      cpu_max: 7
       memory_min: 5
-      memory_max: 6
+      memory_max: 5
       delay_min: 1
       delay_max: 4
       duration_mean: 800
@@ -119,17 +119,17 @@ workload:
       user: user8
   - type: Random
     options: 
-      execution_count: 2000
+      execution_count: 1200
       cpu_min: 2
-      cpu_max: 3
-      memory_min: 5
-      memory_max: 9
+      cpu_max: 2
+      memory_min: 6
+      memory_max: 6
       delay_min: 1
       delay_max: 4
       duration_mean: 250
       duration_dev: 30
       collection_id: 9
-      user: user9
+      user: user4
 
 
 hosts: 
