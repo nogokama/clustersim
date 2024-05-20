@@ -1,14 +1,11 @@
 use std::{
-    collections::{HashMap, HashSet},
     fs::File,
-    hash::Hash,
-    io::{BufReader, BufWriter, Write},
-    mem,
+    io::{BufReader, BufWriter},
     rc::Rc,
 };
 
 use csv::ReaderBuilder;
-use rustc_hash::FxHashMap;
+use rustc_hash::{FxHashMap, FxHashSet};
 use serde::Deserialize;
 
 use crate::{
@@ -39,7 +36,7 @@ impl GoogleClusterHostsReader {
 
         let mut records = Vec::new();
 
-        let mut bad_machines = HashSet::new();
+        let mut bad_machines = FxHashSet::default();
         for line in rdr.deserialize() {
             let record: MachineEvent = line.unwrap();
 
@@ -51,13 +48,10 @@ impl GoogleClusterHostsReader {
                 bad_machines.insert(record.machine_id.unwrap());
             }
 
-            match record.r#type.unwrap() {
-                machine_event::EventType::Unknown => {
-                    if let Some(machine_id) = record.machine_id {
-                        bad_machines.insert(machine_id);
-                    }
+            if record.r#type.unwrap() == machine_event::EventType::Unknown {
+                if let Some(machine_id) = record.machine_id {
+                    bad_machines.insert(machine_id);
                 }
-                _ => {}
             }
 
             records.push(record);
@@ -115,7 +109,11 @@ struct ExecutionDefinition {
 }
 
 impl WorkloadGenerator for GoogleTraceWorkloadGenerator {
-    fn get_workload(&mut self, ctx: &dslab_core::SimulationContext, limit: Option<u64>) -> Vec<ExecutionRequest> {
+    fn get_workload(
+        &mut self,
+        _ctx: &dslab_core::SimulationContext,
+        _limit: Option<u64>,
+    ) -> Vec<ExecutionRequest> {
         self.parse_workload()
             .iter()
             .map(|d| {
@@ -126,38 +124,42 @@ impl WorkloadGenerator for GoogleTraceWorkloadGenerator {
                         cpu_per_node: d.cpus,
                         memory_per_node: d.memory,
                     },
-                    Rc::new(CpuBurnHomogenous { compute_work: d.flops }),
+                    Rc::new(CpuBurnHomogenous {
+                        compute_work: d.flops,
+                    }),
                 )
             })
             .collect::<Vec<_>>()
     }
 
-    fn get_collections(&self, ctx: &dslab_core::SimulationContext) -> Vec<CollectionRequest> {
+    fn get_collections(&self, _ctx: &dslab_core::SimulationContext) -> Vec<CollectionRequest> {
         vec![]
     }
 }
 
 impl GoogleTraceWorkloadGenerator {
     fn parse_workload(&self) -> Vec<ExecutionDefinition> {
-        let mut reader = ReaderBuilder::new().has_headers(true).from_reader(BufReader::new(
-            File::open(&self.instances_path).expect(&format!(
-                "can't find file with instance events: {}",
-                self.instances_path
-            )),
-        ));
+        let mut reader = ReaderBuilder::new()
+            .has_headers(true)
+            .from_reader(BufReader::new(
+                File::open(&self.instances_path).unwrap_or_else(|_| {
+                    panic!(
+                        "can't find file with instance events: {}",
+                        self.instances_path
+                    )
+                }),
+            ));
 
         let mut submit_time = FxHashMap::default();
         let mut schedule_time = FxHashMap::default();
         let mut finished_time = FxHashMap::default();
-        let mut skip_ids = HashSet::new();
+        let mut skip_ids = FxHashSet::default();
 
         let mut cpus_mapping = FxHashMap::default();
         let mut memory_mapping = FxHashMap::default();
 
-        let mut cnt = 0;
         let mut events = Vec::new();
         for line in reader.deserialize() {
-            cnt += 1;
             let record: InstanceEvent = line.unwrap();
             if record.time.is_some() {
                 events.push(record);
@@ -172,25 +174,28 @@ impl GoogleTraceWorkloadGenerator {
                     continue;
                 }
 
-                let id = (record.collection_id.unwrap(), record.instance_index.unwrap());
+                let id = (
+                    record.collection_id.unwrap(),
+                    record.instance_index.unwrap(),
+                );
                 match t {
                     EventType::Enable => {
                         if let Some(cpus) = record.cpus {
                             if let Some(memory) = record.memory {
                                 if let Some(time) = record.time {
-                                    if !submit_time.contains_key(&id) {
+                                    submit_time.entry(id).or_insert_with(|| {
                                         cpus_mapping.insert(id, cpus);
                                         memory_mapping.insert(id, memory);
-                                        submit_time.insert(id, time);
-                                    }
+                                        time
+                                    });
                                 }
                             }
                         }
                     }
                     EventType::Schedule => {
-                        if !schedule_time.contains_key(&id) {
-                            schedule_time.insert(id, record.time.unwrap());
-                        }
+                        schedule_time
+                            .entry(id)
+                            .or_insert_with(|| record.time.unwrap());
                     }
                     EventType::Finish => {
                         finished_time.insert(id, record.time.unwrap());
@@ -269,7 +274,10 @@ impl GoogleTraceWorkloadGenerator {
                 },
                 profile: crate::execution_profiles::builder::ProfileDefinition::Detailed {
                     r#type: CpuBurnHomogenous::get_name(),
-                    args: serde_yaml::to_value(CpuBurnHomogenous { compute_work: d.flops }).unwrap(),
+                    args: serde_yaml::to_value(CpuBurnHomogenous {
+                        compute_work: d.flops,
+                    })
+                    .unwrap(),
                 },
                 wall_time_limit: None,
                 priority: d.priority,

@@ -1,7 +1,6 @@
-use std::collections::HashMap;
+use serde::{Deserialize, Serialize};
 
 use dslab_core::Id;
-use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct HostConfig {
@@ -32,10 +31,9 @@ impl HostConfig {
             group_prefix = Some(group.name_prefix.clone().unwrap());
             format!(
                 "{}-{}",
-                group
-                    .name_prefix
-                    .clone()
-                    .unwrap_or_else(|| panic!("name_prefix is required for host group with count > 1")),
+                group.name_prefix.clone().unwrap_or_else(|| panic!(
+                    "name_prefix is required for host group with count > 1"
+                )),
                 idx.unwrap()
             )
         };
@@ -183,7 +181,8 @@ impl SimulationConfig {
     /// (uses default values if some parameters are absent).
     pub fn from_file(file_name: &str) -> Self {
         let raw: RawSimulationConfig = serde_yaml::from_str(
-            &std::fs::read_to_string(file_name).unwrap_or_else(|e| panic!("Can't read file {}: {}", file_name, e)),
+            &std::fs::read_to_string(file_name)
+                .unwrap_or_else(|e| panic!("Can't read file {}: {}", file_name, e)),
         )
         .unwrap_or_else(|e| panic!("Can't parse YAML from file {}: {}", file_name, e));
 

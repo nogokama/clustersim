@@ -1,31 +1,24 @@
 mod profiles;
 mod round_robin;
-// mod tetris;
 
-use dslab_core::{cast, EventHandler, Id, Simulation, SimulationContext};
-use dslab_scheduling::{
-    cluster::{ExecutionFinished, ScheduleExecution},
-    config::sim_config::SimulationConfig,
-    scheduler::CustomScheduler,
-    simulation::ClusterSchedulingSimulation,
-    workload_generators::random::RandomWorkloadGenerator,
-};
+use std::io::Write;
+
 use env_logger::Builder;
+
+use dslab_core::Simulation;
+use dslab_scheduling::{
+    config::sim_config::SimulationConfig, simulation::ClusterSchedulingSimulation,
+};
+
 use profiles::TestProfile;
 use round_robin::RoundRobinScheduler;
-use serde::Serialize;
-use std::{
-    collections::{HashMap, VecDeque},
-    io::Write,
-};
-use sugars::{rc, refcell};
 
 fn main() {
     Builder::from_default_env()
         .format(|buf, record| writeln!(buf, "{}", record.args()))
         .init();
 
-    let mut sim = Simulation::new(42);
+    let sim = Simulation::new(42);
 
     // let config = SimulationConfig::from_file("configs/config.yaml");
     let config = SimulationConfig::from_file("configs/config_with_users.yaml");

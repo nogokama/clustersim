@@ -1,11 +1,12 @@
 use std::{cell::RefCell, rc::Rc, vec};
 
-use dslab_core::{cast, log_debug, log_info, EventHandler, Id, SimulationContext};
 use rustc_hash::FxHashSet;
 use serde::Serialize;
 
+use dslab_core::{cast, log_debug, log_info, EventHandler, Id, SimulationContext};
+
 use crate::{
-    cluster::{AddExpectedExecutionCount, NewExecutionsRequired},
+    cluster::AddExpectedExecutionCount,
     storage::SharedInfoStorage,
     workload_generators::{
         events::{CollectionRequestEvent, ExecutionRequestEvent},
@@ -28,16 +29,16 @@ pub const WORKLOAD_GENERATION_CHECK_INTERVAL: f64 = 50.;
 pub struct CheckWorkloadGeneration {}
 
 pub struct WorkloadQueueWatcher {
-    pub shared_info_storage: Rc<RefCell<SharedInfoStorage>>,
-    pub workload_generator_state: WorkloadGeneratorState,
-    pub workload_generators: Vec<Box<RefCell<dyn WorkloadGenerator>>>,
-    pub generators_completed: FxHashSet<usize>,
-    pub generators_last_time: Vec<f64>,
+    shared_info_storage: Rc<RefCell<SharedInfoStorage>>,
+    workload_generator_state: WorkloadGeneratorState,
+    workload_generators: Vec<Box<RefCell<dyn WorkloadGenerator>>>,
+    generators_completed: FxHashSet<usize>,
+    generators_last_time: Vec<f64>,
 
-    pub proxy_id: Id,
-    pub cluster_id: Id,
+    proxy_id: Id,
+    cluster_id: Id,
 
-    pub ctx: SimulationContext,
+    ctx: SimulationContext,
 }
 
 impl WorkloadQueueWatcher {
@@ -184,11 +185,9 @@ impl WorkloadQueueWatcher {
         }
 
         for execution_request in workload {
-            self.shared_info_storage.borrow_mut().set_execution_request(
-                execution_request.id.unwrap(),
-                generator_id,
-                execution_request.clone(),
-            );
+            self.shared_info_storage
+                .borrow_mut()
+                .set_execution_request(execution_request.id.unwrap(), execution_request.clone());
 
             let time = execution_request.time;
             self.generators_last_time[generator_id] = time;

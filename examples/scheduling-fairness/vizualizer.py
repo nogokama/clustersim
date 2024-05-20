@@ -1,38 +1,18 @@
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd 
+
 
 # Read data from the file
-with open('load.txt', 'r') as file:
-    data = file.readlines()
-
-with open('scheduler_info.txt', 'r') as file:
-    scheduler_info = file.readlines()
-
-with open('fair_share.txt', 'r') as file: 
-    fair_share_info = file.readlines()
+data = pd.read_csv('load.txt')
+scheduler_info = pd.read_csv('scheduler_info.txt')
+fair_share_info = pd.read_csv('fair_share.txt')
 
 
-# Parse the data into separate lists
-times = []
-host_names = []
-cpu_usages = []
-memory_usages = []
 
-for line in data:
-    parts = line.strip().split()
-    times.append(float(parts[0]))
-    host_names.append(parts[1])
-    cpu_usages.append(float(parts[2]))
-    memory_usages.append(float(parts[3]))
-
-# Convert lists to numpy arrays
-times = np.array(times)
-cpu_usages = np.array(cpu_usages)
-memory_usages = np.array(memory_usages)
-host_names = np.array(host_names)
 
 # Get unique host names
-unique_host_names = np.unique(host_names)
+unique_host_names = np.array(list(data['name'].value_counts().keys()))
 
 
 def plot_data(prefix: str):
@@ -48,14 +28,17 @@ def plot_data(prefix: str):
     for row, host_name in enumerate(cur_names):
 
         # Plot CPU usage
-        indices = np.where((host_names == host_name))
-        axes[row, 0].plot(times[indices], cpu_usages[indices], label=f'{host_name}', linestyle='-', marker='')
+        times = data[data['name'] == host_name]['time']
+        cpu_usages = data[data['name'] == host_name]['cpu_load']
+        memory_usages = data[data['name'] == host_name]['memory_load']
+
+        axes[row, 0].plot(times, cpu_usages, label=f'{host_name}', linestyle='-', marker='')
         axes[row, 0].set_ylabel('CPU Usage')
         axes[row, 0].set_ylim(0, 1)
         axes[row, 0].set_title(f'{host_name} - CPU Usage')
         axes[row, 0].legend()
 
-        axes[row, 1].plot(times[indices], memory_usages[indices], label=f'{host_name}', linestyle='-', marker='')
+        axes[row, 1].plot(times, memory_usages, label=f'{host_name}', linestyle='-', marker='')
         axes[row, 1].set_ylabel('Memory Usage')
         axes[row, 1].set_ylim(0, 1)
         axes[row, 1].set_title(f'{host_name} - Memory Usage')
@@ -83,25 +66,20 @@ plt.plot(figsize=(10, 5))
 plt.xlabel('Time')
 plt.ylabel('Queue Size')
 plt.title('Scheduler Queue Size')
-times = []
-queue_sizes = []
-users = []
-for line in scheduler_info:
-    parts = line.strip().split()
-    times.append(float(parts[0]))
-    queue_sizes.append(float(parts[1]))
-    users.append(str(parts[2]))
 
-times = np.array(times)
-queue_sizes = np.array(queue_sizes)
-users = np.array(users)
 
-unique_users = np.unique(users)
+
+times = scheduler_info['time']
+queue_sizes = scheduler_info['queue_size']
+users = scheduler_info['user']
+
+unique_users = np.array(list(set(users)))
 
 for user in unique_users:
     print(user)
-    indices = np.where((users == user))
-    plt.plot(times[indices], queue_sizes[indices], label=f'{user}', linestyle='-', marker='')
+    times = scheduler_info[scheduler_info['user'] == user]['time']
+    queue_sizes = scheduler_info[scheduler_info['user'] == user]['queue_size']
+    plt.plot(times, queue_sizes, label=f'{user}', linestyle='-', marker='')
 
 plt.legend()
 plt.savefig('queue_size.png')
@@ -125,20 +103,13 @@ ax.tick_params(axis='both', which='both', length=0)
 plt.grid(color='white')
 plt.gca().set_facecolor((0.93, 0.93, 0.93))
 
-times = []
-users = []
-shares = []
-for line in fair_share_info: 
-    parts = line.strip().split()
-    times.append(float(parts[0]))
-    users.append(str(parts[1]))
-    shares.append(float(parts[2]))
+fair_share_info = pd.read_csv('fair_share.txt')
 
-times = np.array(times)
-shares = np.array(shares)
-users = np.array(users)
+times = np.array(fair_share_info['time'])
+shares = np.array(fair_share_info['share'])
+users = np.array(fair_share_info['user'])
 
-unique_users = np.unique(users)
+unique_users = np.array(list(filter(lambda u: isinstance(u, str), set(users))))   
 
 for user in unique_users:
     indices = np.where((users == user))
@@ -152,25 +123,14 @@ plt.savefig('fair_share.png', dpi=300)
 
 plt.clf()
 
-with open('load.txt', 'r') as file:
-    data = file.readlines()
 
-host_names = [] 
-cpu_usages = []
-memory_usages = []
-times = []
+data = pd.read_csv('load.txt')
 
-for line in data:
-    parts = line.strip().split()
-    times.append(float(parts[0]))
-    host_names.append(parts[1])
-    cpu_usages.append(float(parts[2]))
-    memory_usages.append(float(parts[3]))
 
-times = np.array(times)
-host_names = np.array(host_names)
-cpu_usages = np.array(cpu_usages)
-memory_usages = np.array(memory_usages)
+times = np.array(data['time'])
+host_names = np.array(data['name'])
+cpu_usages = np.array(data['cpu_load'])
+memory_usages = np.array(data['memory_load'])
 
 indices = np.where((host_names == 'TOTAL') & (times > 1000) & (times < 5000))
 

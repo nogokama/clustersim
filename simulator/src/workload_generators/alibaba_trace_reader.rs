@@ -1,4 +1,4 @@
-use std::{collections::BinaryHeap, fs::File, rc::Rc};
+use std::{fs::File, rc::Rc};
 
 use csv::Reader;
 use dslab_core::log_warn;
@@ -34,25 +34,6 @@ impl AlibabaTraceReader {
             cnt_records: 0,
         }
     }
-
-    fn get_headers() -> Vec<&'static str> {
-        vec![
-            "instance_name",
-            "task_name",
-            "job_name",
-            "task_type",
-            "status",
-            "start_time",
-            "end_time",
-            "machine_id",
-            "seq_no",
-            "total_seq_no",
-            "cpu_avg",
-            "cpu_max",
-            "mem_avg",
-            "mem_max",
-        ]
-    }
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -78,7 +59,7 @@ impl Eq for InstanceRecord {}
 
 impl PartialOrd for InstanceRecord {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        self.start_time.partial_cmp(&other.start_time)
+        Some(self.cmp(other))
     }
 }
 impl Ord for InstanceRecord {
@@ -123,7 +104,7 @@ impl WorkloadGenerator for AlibabaTraceReader {
 
             let cpu = record.cpu_max.unwrap();
             let mem = record.mem_max.unwrap();
-            if cpu < 1. || cpu > 9600. || mem < 0. || mem > 100. {
+            if !(1. ..=9600.).contains(&cpu) || !(0. ..=100.).contains(&mem) {
                 log_warn!(ctx, "Invalid record: {:?}", record);
                 continue;
             }

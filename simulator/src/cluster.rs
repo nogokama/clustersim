@@ -1,21 +1,15 @@
-use std::{
-    cell::RefCell,
-    collections::{HashMap, HashSet, VecDeque},
-    rc::Rc,
-};
+use core::panic;
+use std::{cell::RefCell, rc::Rc};
 
-use dslab_compute::multicore::{
-    AllocationFailed, AllocationSuccess, CompFinished, CompStarted, Compute, CoresDependency,
-    DeallocationSuccess,
-};
-use dslab_core::{
-    cast, event::EventId, log_debug, log_error, log_info, Event, EventHandler, Id, Simulation,
-    SimulationContext,
-};
 use futures::{select, FutureExt};
-use rustc_hash::FxHashMap;
+use rustc_hash::{FxHashMap, FxHashSet};
 use serde::Serialize;
-use sugars::{rc, refcell};
+use sugars::refcell;
+
+use dslab_compute::multicore::{AllocationFailed, AllocationSuccess, DeallocationSuccess};
+use dslab_core::{
+    cast, log_debug, log_error, log_info, Event, EventHandler, Id, SimulationContext,
+};
 
 use crate::{
     config::sim_config::HostConfig,
@@ -72,7 +66,7 @@ pub(crate) struct Cluster {
     hosts: RefCell<FxHashMap<Id, Rc<ClusterHost>>>,
     hosts_configs: RefCell<FxHashMap<Id, HostConfig>>,
 
-    enabled_hosts: RefCell<HashSet<Id>>,
+    disabled_hosts: RefCell<FxHashSet<Id>>,
 
     shared_info_storage: Rc<RefCell<SharedInfoStorage>>,
     monitoring: Rc<RefCell<Monitoring>>,
@@ -100,7 +94,7 @@ impl Cluster {
         Cluster {
             hosts: refcell!(FxHashMap::default()),
             hosts_configs: refcell!(FxHashMap::default()),
-            enabled_hosts: refcell!(HashSet::new()),
+            disabled_hosts: refcell!(FxHashSet::default()),
             shared_info_storage,
             monitoring,
 
@@ -169,7 +163,15 @@ impl Cluster {
     fn schedule_execution(&self, host_ids: Vec<Id>, execution_id: u64) {
         let hosts = host_ids
             .iter()
-            .map(|id| self.hosts.borrow().get(id).unwrap().clone())
+            .map(|id| {
+                if self.disabled_hosts.borrow().contains(id) {
+                    panic!(
+                        "trying to schedule execution {} on disabled host {} ",
+                        execution_id, id
+                    );
+                }
+                self.hosts.borrow().get(id).unwrap().clone()
+            })
             .collect::<Vec<_>>();
 
         let shared_info_storage = self.shared_info_storage.borrow_mut();
@@ -264,7 +266,7 @@ impl Cluster {
 
     async fn allocate_processes(
         &self,
-        hosts: &Vec<Rc<ClusterHost>>,
+        hosts: &[Rc<ClusterHost>],
         request: &ExecutionRequest,
     ) -> Vec<HostProcessInstance> {
         let mut processes = Vec::new();

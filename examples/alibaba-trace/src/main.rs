@@ -1,14 +1,15 @@
-use dslab_core::Simulation;
-use dslab_scheduling::{
-    config::sim_config::SimulationConfig,
-    simulation::ClusterSchedulingSimulation,
-    workload_generators::{alibaba_trace_reader::AlibabaTraceReader, generator::WorkloadGenerator},
-};
-use env_logger::Builder;
-use round_robin::RoundRobinScheduler;
+mod round_robin;
+
 use std::io::Write;
 
-mod round_robin;
+use env_logger::Builder;
+
+use dslab_core::Simulation;
+use dslab_scheduling::{
+    config::sim_config::SimulationConfig, simulation::ClusterSchedulingSimulation,
+};
+
+use round_robin::RoundRobinScheduler;
 
 #[cfg(feature = "dhat-heap")]
 #[global_allocator]
@@ -22,10 +23,7 @@ fn main() {
     #[cfg(feature = "dhat-heap")]
     let _profiler = dhat::Profiler::new_heap();
 
-    let mut sim = Simulation::new(42);
-    let ctx = sim.create_context("test");
-
-    let mut sim = Simulation::new(42);
+    let sim = Simulation::new(42);
 
     let config = SimulationConfig::from_file("configs/perf_config.yaml");
 

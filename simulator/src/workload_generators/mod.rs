@@ -1,5 +1,3 @@
-use dslab_core::Id;
-
 pub mod alibaba_trace_reader;
 pub mod events;
 pub mod generator;

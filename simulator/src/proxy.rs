@@ -1,14 +1,12 @@
-use std::{cell::RefCell, collections::HashMap, rc::Rc};
+use std::{cell::RefCell, rc::Rc};
 
 use dslab_core::{cast, log_debug, EventHandler, Id, SimulationContext};
-use rustc_hash::FxHashMap;
-use serde::Serialize;
 
 use crate::{
     cluster_events::HostAdded,
     monitoring::Monitoring,
     storage::SharedInfoStorage,
-    workload_generators::events::{CollectionRequestEvent, ExecutionRequest, ExecutionRequestEvent},
+    workload_generators::events::{CollectionRequestEvent, ExecutionRequestEvent},
 };
 
 pub struct Proxy {
@@ -56,17 +54,22 @@ impl EventHandler for Proxy {
 
                 monitoring.add_scheduler_queue_size(event.time, 1, user);
 
-                self.ctx.emit_now(ExecutionRequestEvent { request }, self.scheduler_id);
+                self.ctx
+                    .emit_now(ExecutionRequestEvent { request }, self.scheduler_id);
             }
             HostAdded { host } => {
                 log_debug!(self.ctx, "HostAdded: {}, {}", host.id, self.ctx.time());
-                self.ctx.emit_now(HostAdded { host: host.clone() }, self.scheduler_id);
+                self.ctx
+                    .emit_now(HostAdded { host: host.clone() }, self.scheduler_id);
                 self.ctx.emit_now(HostAdded { host }, self.cluster_id);
             }
             CollectionRequestEvent { request } => {
-                self.shared_info_storage.borrow_mut().add_collection(request.clone());
+                self.shared_info_storage
+                    .borrow_mut()
+                    .add_collection(request.clone());
 
-                self.ctx.emit_now(CollectionRequestEvent { request }, self.scheduler_id);
+                self.ctx
+                    .emit_now(CollectionRequestEvent { request }, self.scheduler_id);
             }
         })
     }

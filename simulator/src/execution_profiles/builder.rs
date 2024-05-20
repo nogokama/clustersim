@@ -1,16 +1,12 @@
 use core::panic;
-use std::{cell::RefCell, collections::HashMap, hash::Hash, rc::Rc};
+use std::{cell::RefCell, rc::Rc};
 
-use async_trait::async_trait;
-use maplit::hashmap;
 use rustc_hash::FxHashMap;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use sugars::{rc, refcell};
 
-use crate::workload_generators::native;
-
 use super::{
-    combinators::{self, ParallelProfile, ProfileCombinator, SequentialProfile},
+    combinators::{ParallelProfile, ProfileCombinator, SequentialProfile},
     default::{CommunicationHomogenous, CpuBurnHomogenous, Idle},
     profile::{ExecutionProfile, NameTrait},
 };
@@ -19,7 +15,10 @@ use super::{
 #[serde(untagged)]
 pub enum ProfileDefinition {
     Simple(String),
-    Detailed { r#type: String, args: serde_yaml::Value },
+    Detailed {
+        r#type: String,
+        args: serde_yaml::Value,
+    },
 }
 
 pub type ConstructorFn = Rc<dyn Fn(&serde_yaml::Value) -> Rc<dyn ExecutionProfile>>;
@@ -29,12 +28,14 @@ pub struct ProfileBuilder {
     pub constructors: Rc<RefCell<FxHashMap<String, ConstructorFn>>>,
 }
 
-impl ProfileBuilder {
-    pub fn new() -> Self {
-        let constructors: Rc<RefCell<FxHashMap<String, ConstructorFn>>> = rc!(refcell!(FxHashMap::default()));
-        constructors
-            .borrow_mut()
-            .insert(CpuBurnHomogenous::get_name(), Rc::new(from_yaml::<CpuBurnHomogenous>));
+impl Default for ProfileBuilder {
+    fn default() -> Self {
+        let constructors: Rc<RefCell<FxHashMap<String, ConstructorFn>>> =
+            rc!(refcell!(FxHashMap::default()));
+        constructors.borrow_mut().insert(
+            CpuBurnHomogenous::get_name(),
+            Rc::new(from_yaml::<CpuBurnHomogenous>),
+        );
         constructors.borrow_mut().insert(
             CommunicationHomogenous::get_name(),
             Rc::new(from_yaml::<CommunicationHomogenous>),
@@ -46,20 +47,23 @@ impl ProfileBuilder {
         let mut constructors_clone = constructors.clone();
         constructors.borrow_mut().insert(
             ParallelProfile::get_name(),
-            Rc::new(move |json| parse_combinator::<ParallelProfile>(json, constructors_clone.clone())),
+            Rc::new(move |json| {
+                parse_combinator::<ParallelProfile>(json, constructors_clone.clone())
+            }),
         );
 
         constructors_clone = constructors.clone();
         constructors.borrow_mut().insert(
             SequentialProfile::get_name(),
-            Rc::new(move |json| parse_combinator::<SequentialProfile>(json, constructors_clone.clone())),
+            Rc::new(move |json| {
+                parse_combinator::<SequentialProfile>(json, constructors_clone.clone())
+            }),
         );
 
-        Self {
-            constructors: constructors,
-        }
+        Self { constructors }
     }
-
+}
+impl ProfileBuilder {
     pub fn parse_profiles(&self, yaml: &serde_yaml::Value) {
         yaml.as_mapping().unwrap().iter().for_each(|(name, value)| {
             let name = name.as_str().unwrap().to_string();
@@ -71,7 +75,12 @@ impl ProfileBuilder {
 
             match profile {
                 ProfileDefinition::Simple(profile_name) => {
-                    let constructor = self.constructors.borrow().get(&profile_name).cloned().unwrap();
+                    let constructor = self
+                        .constructors
+                        .borrow()
+                        .get(&profile_name)
+                        .cloned()
+                        .unwrap();
                     self.constructors
                         .borrow_mut()
                         .insert(name.clone(), Rc::new(move |json| constructor(json)));

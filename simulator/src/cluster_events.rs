@@ -1,7 +1,6 @@
-use dslab_core::Id;
 use serde::Serialize;
 
-use crate::{config::sim_config::HostConfig, host::cluster_host::ClusterHost};
+use crate::config::sim_config::HostConfig;
 
 #[derive(Serialize, Clone)]
 pub struct HostAdded {

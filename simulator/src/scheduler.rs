@@ -6,7 +6,8 @@ use crate::{
     cluster_events::HostAdded,
     config::sim_config::HostConfig,
     workload_generators::events::{
-        CollectionRequest, CollectionRequestEvent, ExecutionRequest, ExecutionRequestEvent, ResourcesPack,
+        CollectionRequest, CollectionRequestEvent, ExecutionRequest, ExecutionRequestEvent,
+        ResourcesPack,
     },
 };
 
@@ -49,8 +50,13 @@ impl SchedulerContext {
     }
 
     pub fn schedule(&self, host_ids: Vec<Id>, execution_id: u64) {
-        self.ctx
-            .emit_now(ScheduleExecution { host_ids, execution_id }, self.cluster_id);
+        self.ctx.emit_now(
+            ScheduleExecution {
+                host_ids,
+                execution_id,
+            },
+            self.cluster_id,
+        );
     }
     pub fn schedule_one_host(&self, host_id: Id, execution_id: u64) {
         self.ctx.emit_now(
@@ -62,15 +68,25 @@ impl SchedulerContext {
         );
     }
     pub fn cancel(&self, execution_id: u64) {
-        self.ctx.emit_now(CancelExecution { execution_id }, self.cluster_id);
+        self.ctx
+            .emit_now(CancelExecution { execution_id }, self.cluster_id);
     }
 }
 
 pub trait Scheduler {
     fn on_host_added(&mut self, host: HostConfig);
     fn on_execution_request(&mut self, ctx: &SchedulerContext, request: ExecutionRequest);
-    fn on_collection_request(&mut self, ctx: &SchedulerContext, collection_request: CollectionRequest);
-    fn on_execution_finished(&mut self, ctx: &SchedulerContext, execution_id: u64, hosts: Vec<HostAvailableResources>);
+    fn on_collection_request(
+        &mut self,
+        ctx: &SchedulerContext,
+        collection_request: CollectionRequest,
+    );
+    fn on_execution_finished(
+        &mut self,
+        ctx: &SchedulerContext,
+        execution_id: u64,
+        hosts: Vec<HostAvailableResources>,
+    );
     fn on_host_resources(&mut self, ctx: &SchedulerContext, host_id: Id, resources: ResourcesPack);
 }
 
@@ -106,8 +122,12 @@ impl<T: Scheduler> EventHandler for SchedulerInvoker<T> {
             ExecutionRequestEvent { request } => {
                 self.scheduler.on_execution_request(&self.ctx, request);
             }
-            ExecutionFinished { execution_id, hosts } => {
-                self.scheduler.on_execution_finished(&self.ctx, execution_id, hosts);
+            ExecutionFinished {
+                execution_id,
+                hosts,
+            } => {
+                self.scheduler
+                    .on_execution_finished(&self.ctx, execution_id, hosts);
             }
             CollectionRequestEvent { request } => {
                 self.scheduler.on_collection_request(&self.ctx, request);

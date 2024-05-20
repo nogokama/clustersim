@@ -1,17 +1,13 @@
-use std::{
-    collections::{HashMap, VecDeque},
-    hash::Hash,
-};
+use std::collections::VecDeque;
 
-use dslab_core::{cast, EventHandler, Id, SimulationContext};
-use dslab_scheduling::{
-    cluster::{ExecutionFinished, ScheduleExecution},
-    cluster_events::HostAdded,
-    config::sim_config::HostConfig,
-    scheduler::{CustomScheduler, HostAvailableResources, Scheduler, SchedulerContext},
-    workload_generators::events::{ExecutionRequest, ExecutionRequestEvent, ResourcesPack},
-};
 use rustc_hash::FxHashMap;
+
+use dslab_core::Id;
+use dslab_scheduling::{
+    config::sim_config::HostConfig,
+    scheduler::{HostAvailableResources, Scheduler, SchedulerContext},
+    workload_generators::events::{CollectionRequest, ExecutionRequest, ResourcesPack},
+};
 
 pub struct ExecutionInfo {
     id: u64,
@@ -19,6 +15,7 @@ pub struct ExecutionInfo {
     memory: u64,
 }
 
+#[derive(Default)]
 pub struct RoundRobinScheduler {
     hosts: Vec<HostConfig>,
     available_resources: FxHashMap<Id, ResourcesPack>,
@@ -27,22 +24,14 @@ pub struct RoundRobinScheduler {
 }
 
 impl RoundRobinScheduler {
-    pub fn new() -> RoundRobinScheduler {
-        RoundRobinScheduler {
-            hosts: Vec::new(),
-            available_resources: FxHashMap::default(),
-            queue: VecDeque::new(),
-            executions: FxHashMap::default(),
-        }
-    }
-
     fn schedule(&mut self, ctx: &SchedulerContext) {
         // println!("resources {:?}", self.available_resources);
         while let Some(execution) = self.queue.pop_front() {
             let mut scheduled = false;
             for machine in &self.hosts {
                 if let Some(resources) = self.available_resources.get_mut(&machine.id) {
-                    if resources.cpu >= execution.cpu_cores && resources.memory >= execution.memory {
+                    if resources.cpu >= execution.cpu_cores && resources.memory >= execution.memory
+                    {
                         resources.cpu -= execution.cpu_cores;
                         resources.memory -= execution.memory;
                         ctx.schedule_one_host(machine.id, execution.id);
@@ -61,7 +50,12 @@ impl RoundRobinScheduler {
 }
 
 impl Scheduler for RoundRobinScheduler {
-    fn on_execution_finished(&mut self, ctx: &SchedulerContext, execution_id: u64, hosts: Vec<HostAvailableResources>) {
+    fn on_execution_finished(
+        &mut self,
+        ctx: &SchedulerContext,
+        execution_id: u64,
+        hosts: Vec<HostAvailableResources>,
+    ) {
         let resources = self.executions.remove(&execution_id).unwrap();
         for host in hosts {
             if let Some(host) = self.available_resources.get_mut(&host.host_id) {
@@ -88,15 +82,23 @@ impl Scheduler for RoundRobinScheduler {
         self.schedule(ctx);
     }
     fn on_host_added(&mut self, host: HostConfig) {
-        self.available_resources
-            .insert(host.id, ResourcesPack::new_cpu_memory(host.cpus, host.memory));
+        self.available_resources.insert(
+            host.id,
+            ResourcesPack::new_cpu_memory(host.cpus, host.memory),
+        );
         self.hosts.push(host);
     }
-    fn on_host_resources(&mut self, ctx: &SchedulerContext, host_id: Id, resources: ResourcesPack) {}
+    fn on_host_resources(
+        &mut self,
+        _ctx: &SchedulerContext,
+        _host_id: Id,
+        _resources: ResourcesPack,
+    ) {
+    }
     fn on_collection_request(
         &mut self,
-        ctx: &SchedulerContext,
-        collection_request: dslab_scheduling::workload_generators::events::CollectionRequest,
+        _ctx: &SchedulerContext,
+        _collection_request: CollectionRequest,
     ) {
     }
 }

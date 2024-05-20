@@ -1,26 +1,20 @@
-mod generator;
 mod profiles;
 mod round_robin;
 mod tetris;
 
-use dslab_core::{cast, EventHandler, Id, Simulation, SimulationContext};
-use dslab_scheduling::{
-    cluster::{ExecutionFinished, ScheduleExecution},
-    config::sim_config::SimulationConfig,
-    scheduler::CustomScheduler,
-    simulation::ClusterSchedulingSimulation,
-    workload_generators::random::RandomWorkloadGenerator,
-};
+use std::io::Write;
+
 use env_logger::Builder;
-use generator::generate_yaml;
-use profiles::TestProfile;
-use round_robin::RoundRobinScheduler;
-use serde::Serialize;
-use std::{
-    collections::{HashMap, VecDeque},
-    io::Write,
+
+use dslab_core::Simulation;
+use dslab_scheduling::{
+    config::sim_config::SimulationConfig, simulation::ClusterSchedulingSimulation,
 };
-use sugars::{rc, refcell};
+
+use profiles::TestProfile;
+#[allow(unused_imports)]
+use round_robin::RoundRobinScheduler;
+#[allow(unused_imports)]
 use tetris::FairTetrisScheduler;
 
 fn simulation() {
@@ -28,7 +22,7 @@ fn simulation() {
         .format(|buf, record| writeln!(buf, "{}", record.args()))
         .init();
 
-    let mut sim = Simulation::new(42);
+    let sim = Simulation::new(42);
 
     // let config = SimulationConfig::from_file("configs/config.yaml");
     let config = SimulationConfig::from_file("configs/config_with_users.yaml");
@@ -45,14 +39,9 @@ fn simulation() {
 
     // cluster_sim.run_with_scheduler(RoundRobinScheduler::new());
 
-    cluster_sim.run_with_scheduler(FairTetrisScheduler::new(1.0));
-}
-
-fn generation() {
-    generate_yaml();
+    cluster_sim.run_with_scheduler(FairTetrisScheduler::new(0.6));
 }
 
 fn main() {
     simulation();
-    // generation();
 }

@@ -1,12 +1,10 @@
-use std::{collections::HashMap, option, rc::Rc};
+use std::rc::Rc;
 
-use dslab_core::{log_info, Id, Simulation, SimulationContext};
 use serde::{Deserialize, Serialize};
 
-use crate::{
-    execution_profiles::default::{CpuBurnHomogenous, Idle},
-    workload_generators::events::CollectionRequest,
-};
+use dslab_core::SimulationContext;
+
+use crate::{execution_profiles::default::Idle, workload_generators::events::CollectionRequest};
 
 use super::{
     events::{ExecutionRequest, ResourceRequirements},
@@ -76,7 +74,7 @@ impl WorkloadGenerator for RandomWorkloadGenerator {
         let time_distribution =
             rand_distr::Normal::new(self.options.duration_mean, self.options.duration_dev).unwrap();
 
-        for _id in 0..limit as u64 {
+        for _id in 0..limit {
             let execution_time = ctx.sample_from_distribution(&time_distribution);
             let job = ExecutionRequest {
                 id: None,

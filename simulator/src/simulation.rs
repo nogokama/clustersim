@@ -1,18 +1,17 @@
-use core::{panic, time};
-use std::{cell::RefCell, collections::HashSet, rc::Rc, time::Instant, vec};
+use std::{cell::RefCell, rc::Rc, time::Instant, vec};
+
+use serde::de::DeserializeOwned;
+use sugars::{boxed, rc, refcell};
 
 use dslab_compute::multicore::{
     AllocationFailed, AllocationSuccess, CompFinished, CompStarted, Compute, DeallocationSuccess,
 };
-use dslab_core::{event, EventHandler, Id, Simulation, SimulationContext};
+use dslab_core::{EventHandler, Id, Simulation};
 use dslab_network::{
     models::{ConstantBandwidthNetworkModel, SharedBandwidthNetworkModel},
     DataTransferCompleted, Network, NetworkModel,
 };
 use dslab_storage::disk::DiskBuilder;
-use rustc_hash::FxHashSet;
-use serde::de::DeserializeOwned;
-use sugars::{boxed, rc, refcell};
 
 use crate::{
     cluster::Cluster,
@@ -25,14 +24,10 @@ use crate::{
     host::cluster_host::ClusterHost,
     monitoring::Monitoring,
     proxy::Proxy,
-    scheduler::{CustomScheduler, Scheduler, SchedulerContext, SchedulerInvoker},
+    scheduler::{CustomScheduler, Scheduler, SchedulerInvoker},
     storage::SharedInfoStorage,
     workload_generators::{
-        events::{CollectionRequestEvent, ExecutionRequestEvent},
-        generator::WorkloadGenerator,
-        google_trace_reader::GoogleClusterHostsReader,
-        random::RandomWorkloadGenerator,
-        workload_type::workload_resolver,
+        google_trace_reader::GoogleClusterHostsReader, workload_type::workload_resolver,
     },
     workload_queue_watcher::WorkloadQueueWatcher,
 };
@@ -59,7 +54,7 @@ impl ClusterSchedulingSimulation {
         let monitoring = rc!(refcell!(Monitoring::new(
             config.monitoring.unwrap_or_default()
         )));
-        let shared_storage = rc!(refcell!(SharedInfoStorage::new()));
+        let shared_storage = rc!(refcell!(SharedInfoStorage::default()));
 
         let cluster_ctx = sim.create_context("cluster");
         let cluster_id = cluster_ctx.id();
@@ -82,7 +77,7 @@ impl ClusterSchedulingSimulation {
 
         let generator_ctx = sim.create_context("queue_watcher");
 
-        let profile_builder = ProfileBuilder::new();
+        let profile_builder = ProfileBuilder::default();
 
         let workload_generators = config
             .workload
@@ -323,7 +318,7 @@ impl ClusterSchedulingSimulation {
         println!("SIMULATION FINISHED AT: {}", self.sim.time());
         println!(
             "Simulation speedup: {}",
-            self.sim.time() as f64 / elapsed.as_secs_f64()
+            self.sim.time() / elapsed.as_secs_f64()
         );
         println!(
             "Processed executions: {}",

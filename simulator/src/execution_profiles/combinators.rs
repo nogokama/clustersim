@@ -18,7 +18,7 @@ pub struct ParallelProfile {
 
 #[async_trait(?Send)]
 impl ExecutionProfile for ParallelProfile {
-    async fn run(self: Rc<Self>, processes: &Vec<HostProcessInstance>) {
+    async fn run(self: Rc<Self>, processes: &[HostProcessInstance]) {
         for _ in 0..self.repeat.unwrap_or(1) {
             join_all(self.profiles.iter().map(|p| p.clone().run(processes))).await;
         }
@@ -47,7 +47,7 @@ pub struct SequentialProfile {
 
 #[async_trait(?Send)]
 impl ExecutionProfile for SequentialProfile {
-    async fn run(self: Rc<Self>, processes: &Vec<HostProcessInstance>) {
+    async fn run(self: Rc<Self>, processes: &[HostProcessInstance]) {
         for _ in 0..self.repeat.unwrap_or(1) {
             for profile in self.profiles.iter() {
                 profile.clone().run(processes).await;

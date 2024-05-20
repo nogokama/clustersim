@@ -280,7 +280,9 @@ pub mod machine_event {
         Update = 3,
     }
 
-    pub(super) fn deserialize_event_type<'de, D>(deserializer: D) -> Result<Option<EventType>, D::Error>
+    pub(super) fn deserialize_event_type<'de, D>(
+        deserializer: D,
+    ) -> Result<Option<EventType>, D::Error>
     where
         D: serde::Deserializer<'de>,
     {

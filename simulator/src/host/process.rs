@@ -1,6 +1,6 @@
-use std::{cell::RefCell, rc::Rc};
+use std::rc::Rc;
 
-use dslab_compute::multicore::{Compute, CoresDependency};
+use dslab_compute::multicore::CoresDependency;
 use dslab_core::Id;
 
 use super::cluster_host::ClusterHost;
@@ -29,15 +29,21 @@ impl HostProcessInstance {
     }
 
     pub async fn transfer_data_from_process(&self, size: f64, src_process: ProcessId) {
-        self.host.transfer_data_from_process(size, src_process).await;
+        self.host
+            .transfer_data_from_process(size, src_process)
+            .await;
     }
 
     pub async fn transfer_data_to_component(&self, size: f64, component_id: Id) {
-        self.host.transfer_data_to_component(size, component_id).await;
+        self.host
+            .transfer_data_to_component(size, component_id)
+            .await;
     }
 
     pub async fn transfer_data_from_component(&self, size: f64, component_id: Id) {
-        self.host.transfer_data_from_component(size, component_id).await;
+        self.host
+            .transfer_data_from_component(size, component_id)
+            .await;
     }
 
     pub async fn write_data(&self, size: u64) -> Result<(), String> {

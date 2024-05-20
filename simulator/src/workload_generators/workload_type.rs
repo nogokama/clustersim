@@ -1,17 +1,11 @@
 //! VM dataset types.
 
-use std::{
-    cell::{Ref, RefCell},
-    collections::HashMap,
-    str::FromStr,
-};
+use std::{cell::RefCell, str::FromStr};
 
-use log::warn;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    config::{options::parse_config_value, sim_config::ClusterWorkloadConfig},
-    execution_profiles::builder::ProfileBuilder,
+    config::sim_config::ClusterWorkloadConfig, execution_profiles::builder::ProfileBuilder,
 };
 
 use super::{
@@ -40,7 +34,10 @@ impl FromStr for WorkloadType {
             "swf" => Ok(WorkloadType::SWF),
             "native" => Ok(WorkloadType::Native),
             _ => {
-                panic!("Cannot parse workload type `{}`, will use random as default", input);
+                panic!(
+                    "Cannot parse workload type `{}`, will use random as default",
+                    input
+                );
             }
         }
     }
@@ -52,22 +49,31 @@ pub fn workload_resolver(
 ) -> Box<RefCell<dyn WorkloadGenerator>> {
     let workload_type = WorkloadType::from_str(&config.r#type).unwrap();
     let options = config.options.clone();
-    let path = config.path.clone();
 
     match workload_type {
         WorkloadType::Random => Box::new(RefCell::new(RandomWorkloadGenerator::from_options(
-            options.as_ref().expect("Random workload options are required"),
+            options
+                .as_ref()
+                .expect("Random workload options are required"),
         ))),
         WorkloadType::Google => Box::new(RefCell::new(GoogleTraceWorkloadGenerator::from_options(
-            options.as_ref().expect("Google trace workload options are required"),
+            options
+                .as_ref()
+                .expect("Google trace workload options are required"),
         ))),
         WorkloadType::Alibaba => Box::new(RefCell::new(AlibabaTraceReader::from_options(
-            options.as_ref().expect("Alibaba trace workload options are required"),
+            options
+                .as_ref()
+                .expect("Alibaba trace workload options are required"),
         ))),
         WorkloadType::SWF => unimplemented!(),
-        WorkloadType::Native => Box::new(RefCell::new(NativeWorkloadGenerator::from_options_and_builder(
-            options.as_ref().expect("Native workload options are required"),
-            profile_builder,
-        ))),
+        WorkloadType::Native => Box::new(RefCell::new(
+            NativeWorkloadGenerator::from_options_and_builder(
+                options
+                    .as_ref()
+                    .expect("Native workload options are required"),
+                profile_builder,
+            ),
+        )),
     }
 }

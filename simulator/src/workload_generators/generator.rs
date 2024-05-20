@@ -1,4 +1,4 @@
-use dslab_core::{Id, SimulationContext};
+use dslab_core::SimulationContext;
 
 use super::events::{CollectionRequest, ExecutionRequest};
 
@@ -9,7 +9,7 @@ pub trait WorkloadGenerator {
         limit: Option<u64>,
     ) -> Vec<ExecutionRequest>;
 
-    fn get_collections(&self, ctx: &SimulationContext) -> Vec<CollectionRequest> {
+    fn get_collections(&self, _ctx: &SimulationContext) -> Vec<CollectionRequest> {
         vec![]
     }
 

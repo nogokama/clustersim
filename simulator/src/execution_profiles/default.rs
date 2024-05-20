@@ -18,7 +18,7 @@ pub struct Idle {
 
 #[async_trait(?Send)]
 impl ExecutionProfile for Idle {
-    async fn run(self: Rc<Self>, processes: &Vec<HostProcessInstance>) {
+    async fn run(self: Rc<Self>, processes: &[HostProcessInstance]) {
         processes[0].sleep(self.time).await;
     }
 
@@ -40,7 +40,7 @@ pub struct CpuBurnHomogenous {
 
 #[async_trait(?Send)]
 impl ExecutionProfile for CpuBurnHomogenous {
-    async fn run(self: Rc<Self>, processes: &Vec<HostProcessInstance>) {
+    async fn run(self: Rc<Self>, processes: &[HostProcessInstance]) {
         join_all(
             processes
                 .iter()
@@ -66,7 +66,7 @@ pub struct CommunicationHomogenous {
 
 #[async_trait(?Send)]
 impl ExecutionProfile for CommunicationHomogenous {
-    async fn run(self: Rc<Self>, processes: &Vec<HostProcessInstance>) {
+    async fn run(self: Rc<Self>, processes: &[HostProcessInstance]) {
         let mut futures = vec![];
         for i in 0..processes.len() {
             for j in 0..processes.len() {
@@ -97,7 +97,7 @@ pub struct MasterWorkersProfile {
 
 #[async_trait(?Send)]
 impl ExecutionProfile for MasterWorkersProfile {
-    async fn run(self: Rc<Self>, processes: &Vec<HostProcessInstance>) {
+    async fn run(self: Rc<Self>, processes: &[HostProcessInstance]) {
         let master_process = &processes[0];
         let worker_processes = &processes[1..];
 
@@ -105,7 +105,8 @@ impl ExecutionProfile for MasterWorkersProfile {
             master_process
                 .transfer_data_to_process(self.data_transfer_size, p.id)
                 .await;
-            p.run_compute(self.worker_compute_work, CoresDependency::Linear).await;
+            p.run_compute(self.worker_compute_work, CoresDependency::Linear)
+                .await;
         }))
         .await;
 

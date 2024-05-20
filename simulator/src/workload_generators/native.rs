@@ -1,6 +1,5 @@
 use dslab_core::SimulationContext;
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
 
 use crate::execution_profiles::builder::{ProfileBuilder, ProfileDefinition};
 
@@ -42,10 +41,15 @@ pub struct NativeWorkloadGenerator {
 }
 
 impl NativeWorkloadGenerator {
-    pub fn from_options_and_builder(options: &serde_yaml::Value, profile_builder: ProfileBuilder) -> Self {
-        let options: NativeWorkloadGeneratorOptions = serde_yaml::from_value(options.clone()).unwrap();
+    pub fn from_options_and_builder(
+        options: &serde_yaml::Value,
+        profile_builder: ProfileBuilder,
+    ) -> Self {
+        let options: NativeWorkloadGeneratorOptions =
+            serde_yaml::from_value(options.clone()).unwrap();
         let jobs: Vec<NativeExecutionDefinition> = serde_yaml::from_str(
-            &std::fs::read_to_string(&options.path).unwrap_or_else(|_| panic!("Can't read file {}", options.path)),
+            &std::fs::read_to_string(&options.path)
+                .unwrap_or_else(|_| panic!("Can't read file {}", options.path)),
         )
         .unwrap_or_else(|reason| panic!("Can't parse YAML from file {}: {}", options.path, reason));
 
@@ -58,10 +62,14 @@ impl NativeWorkloadGenerator {
 }
 
 impl WorkloadGenerator for NativeWorkloadGenerator {
-    fn get_workload(&mut self, ctx: &SimulationContext, limit: Option<u64>) -> Vec<ExecutionRequest> {
+    fn get_workload(
+        &mut self,
+        _ctx: &SimulationContext,
+        _limit: Option<u64>,
+    ) -> Vec<ExecutionRequest> {
         if let Some(profile_path) = &self.options.profile_path {
             let profiles = serde_yaml::from_str(
-                &std::fs::read_to_string(&profile_path)
+                &std::fs::read_to_string(profile_path)
                     .unwrap_or_else(|e| panic!("Can't read file {}: {}", profile_path, e)),
             )
             .unwrap_or_else(|e| panic!("Can't parse profiles from file {}: {}", profile_path, e));
@@ -89,7 +97,7 @@ impl WorkloadGenerator for NativeWorkloadGenerator {
         workload
     }
 
-    fn get_collections(&self, ctx: &SimulationContext) -> Vec<CollectionRequest> {
+    fn get_collections(&self, _ctx: &SimulationContext) -> Vec<CollectionRequest> {
         if let Some(collections_path) = &self.options.collections_path {
             let collections: Vec<CollectionRequest> = serde_json::from_str(
                 &std::fs::read_to_string(collections_path)

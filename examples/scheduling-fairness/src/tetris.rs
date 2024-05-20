@@ -1,17 +1,13 @@
-use std::{
-    collections::{HashMap, VecDeque},
-    hash::Hash,
-};
+use std::collections::VecDeque;
 
-use dslab_core::{cast, EventHandler, Id, SimulationContext};
-use dslab_scheduling::{
-    cluster::{ExecutionFinished, ScheduleExecution},
-    cluster_events::HostAdded,
-    config::sim_config::HostConfig,
-    scheduler::{CustomScheduler, HostAvailableResources, Scheduler, SchedulerContext},
-    workload_generators::events::{CollectionRequest, ExecutionRequest, ExecutionRequestEvent, ResourcesPack},
-};
 use rustc_hash::FxHashMap;
+
+use dslab_core::Id;
+use dslab_scheduling::{
+    config::sim_config::HostConfig,
+    scheduler::{HostAvailableResources, Scheduler, SchedulerContext},
+    workload_generators::events::{CollectionRequest, ExecutionRequest, ResourcesPack},
+};
 
 #[derive(Clone)]
 pub struct ExecutionInfo {
@@ -26,7 +22,7 @@ fn tetris_function(pack_a: &ResourcesPack, pack_b: &ResourcesPack) -> f64 {
     if a_len == 0. || b_len == 0. {
         return 0.;
     }
-    return (pack_a.cpu as u64 * pack_b.cpu as u64 + pack_a.memory * pack_b.memory) as f64 / a_len / b_len;
+    (pack_a.cpu as u64 * pack_b.cpu as u64 + pack_a.memory * pack_b.memory) as f64 / a_len / b_len
 }
 
 pub struct FairTetrisScheduler {
@@ -47,7 +43,7 @@ pub struct FairTetrisScheduler {
 
 impl FairTetrisScheduler {
     pub fn new(fair_fraction: f64) -> FairTetrisScheduler {
-        assert!(0. <= fair_fraction && fair_fraction <= 1.);
+        assert!((0. ..=1.).contains(&fair_fraction));
 
         let mut queues = FxHashMap::default();
         queues.insert(None, VecDeque::new());
@@ -65,21 +61,23 @@ impl FairTetrisScheduler {
     }
 
     fn schedule(&mut self, ctx: &SchedulerContext, host_id: Id, mut host_resources: ResourcesPack) {
-        loop {
-            if let Some(execution) = self.take_most_priority_execution(&host_resources) {
-                if execution.resources.fit_into(&host_resources) {
-                    host_resources.subtract(&execution.resources);
-                    if let Some(user) = execution.user.clone() {
-                        self.user_resources.get_mut(&user).unwrap().add(&execution.resources);
-                        self.update_user_share(user);
-                    }
-                    ctx.schedule_one_host(host_id, execution.id);
-                    self.scheduled += 1;
-                } else {
-                    self.queues.get_mut(&execution.user).unwrap().push_front(execution);
-                    break;
+        while let Some(execution) = self.take_most_priority_execution(&host_resources) {
+            if execution.resources.fit_into(&host_resources) {
+                host_resources.subtract(&execution.resources);
+                if let Some(user) = execution.user.clone() {
+                    self.user_resources
+                        .get_mut(&user)
+                        .unwrap()
+                        .add(&execution.resources);
+                    self.update_user_share(user);
                 }
+                ctx.schedule_one_host(host_id, execution.id);
+                self.scheduled += 1;
             } else {
+                self.queues
+                    .get_mut(&execution.user)
+                    .unwrap()
+                    .push_front(execution);
                 break;
             }
         }
@@ -93,11 +91,11 @@ impl FairTetrisScheduler {
             .collect::<Vec<_>>();
 
         let fair_len = (1. - self.fair_fraction) * users_priority.len() as f64;
-        let choose_from_len = std::cmp::max(1, (fair_len.ceil() as usize));
+        let choose_from_len = std::cmp::max(1, fair_len.ceil() as usize);
 
         users_priority.truncate(choose_from_len);
 
-        if users_priority.len() == 0 {
+        if users_priority.is_empty() {
             return None;
         }
 
@@ -124,8 +122,10 @@ impl FairTetrisScheduler {
 
     fn update_user_share(&mut self, user: String) {
         let user_resources = self.user_resources.get(&user).unwrap();
-        let user_cpu_share = (user_resources.cpu as f64) / (self.total_cluster_resources.cpu as f64);
-        let user_memory_share = (user_resources.memory as f64) / (self.total_cluster_resources.memory as f64);
+        let user_cpu_share =
+            (user_resources.cpu as f64) / (self.total_cluster_resources.cpu as f64);
+        let user_memory_share =
+            (user_resources.memory as f64) / (self.total_cluster_resources.memory as f64);
         self.fair_shares.insert(
             user,
             if user_cpu_share > user_memory_share {
@@ -138,7 +138,12 @@ impl FairTetrisScheduler {
 }
 
 impl Scheduler for FairTetrisScheduler {
-    fn on_execution_finished(&mut self, ctx: &SchedulerContext, execution_id: u64, hosts: Vec<HostAvailableResources>) {
+    fn on_execution_finished(
+        &mut self,
+        ctx: &SchedulerContext,
+        execution_id: u64,
+        hosts: Vec<HostAvailableResources>,
+    ) {
         assert_eq!(hosts.len(), 1);
 
         let execution = self.executions.remove(&execution_id).unwrap();
@@ -153,7 +158,7 @@ impl Scheduler for FairTetrisScheduler {
         self.schedule(ctx, hosts[0].host_id, hosts[0].resources);
     }
 
-    fn on_execution_request(&mut self, ctx: &SchedulerContext, request: ExecutionRequest) {
+    fn on_execution_request(&mut self, _ctx: &SchedulerContext, request: ExecutionRequest) {
         let execution_id = request.id.unwrap();
         let cpu = request.resources.cpu_per_node;
         let memory = request.resources.memory_per_node;
@@ -168,7 +173,10 @@ impl Scheduler for FairTetrisScheduler {
             resources: ResourcesPack::new_cpu_memory(cpu, memory),
             user: user.clone(),
         };
-        self.queues.get_mut(&user).unwrap().push_back(execution_info.clone());
+        self.queues
+            .get_mut(&user)
+            .unwrap()
+            .push_back(execution_info.clone());
 
         self.executions.insert(execution_id, execution_info);
     }
@@ -183,12 +191,17 @@ impl Scheduler for FairTetrisScheduler {
         self.hosts.push(host);
     }
 
-    fn on_collection_request(&mut self, _ctx: &SchedulerContext, collection_request: CollectionRequest) {
+    fn on_collection_request(
+        &mut self,
+        _ctx: &SchedulerContext,
+        collection_request: CollectionRequest,
+    ) {
         if let Some(user) = collection_request.user {
             self.collection_id_to_user
                 .insert(collection_request.id.unwrap(), user.clone());
             self.fair_shares.insert(user.clone(), 0.);
-            self.user_resources.insert(user.clone(), ResourcesPack::default());
+            self.user_resources
+                .insert(user.clone(), ResourcesPack::default());
             self.queues.insert(Some(user), VecDeque::new());
         }
     }

@@ -1,14 +1,16 @@
 use std::{cell::RefCell, rc::Rc};
 
-use dslab_compute::multicore::{Allocation, CompFinished, CompStarted, Compute, CoresDependency};
-use dslab_core::{cast, log_debug, EventHandler, Id, SimulationContext};
-use dslab_network::{models::shared, DataTransferCompleted, Network};
-use dslab_storage::disk::Disk;
-use dslab_storage::events::{DataReadCompleted, DataReadFailed, DataWriteCompleted, DataWriteFailed};
-use dslab_storage::storage::{Storage, StorageInfo};
 use futures::{select, FutureExt};
 
-use crate::logger::{log_compute_load, log_memory_load};
+use dslab_compute::multicore::{CompFinished, CompStarted, Compute, CoresDependency};
+use dslab_core::{cast, log_debug, EventHandler, Id, SimulationContext};
+use dslab_network::{DataTransferCompleted, Network};
+use dslab_storage::disk::Disk;
+use dslab_storage::events::{
+    DataReadCompleted, DataReadFailed, DataWriteCompleted, DataWriteFailed,
+};
+use dslab_storage::storage::Storage;
+
 use crate::monitoring::Monitoring;
 use crate::storage::SharedInfoStorage;
 
@@ -53,7 +55,12 @@ impl ClusterHost {
         self.ctx.sleep(time).await;
     }
 
-    pub async fn run_compute(&self, compute_work: f64, compute_allocation_id: u64, cores_dependency: CoresDependency) {
+    pub async fn run_compute(
+        &self,
+        compute_work: f64,
+        compute_allocation_id: u64,
+        cores_dependency: CoresDependency,
+    ) {
         let req_id = self.compute.borrow_mut().run_on_allocation(
             compute_work,
             compute_allocation_id,
@@ -61,12 +68,22 @@ impl ClusterHost {
             self.ctx.id(),
         );
 
-        log_debug!(self.ctx, "running flops: id={}, flops={}", req_id, compute_work);
+        log_debug!(
+            self.ctx,
+            "running flops: id={}, flops={}",
+            req_id,
+            compute_work
+        );
         self.ctx.recv_event_by_key::<CompStarted>(req_id).await;
 
         self.ctx.recv_event_by_key::<CompFinished>(req_id).await;
 
-        log_debug!(self.ctx, "completed flops: id={}, flops={}", req_id, compute_work);
+        log_debug!(
+            self.ctx,
+            "completed flops: id={}, flops={}",
+            req_id,
+            compute_work
+        );
     }
 
     pub async fn transfer_data_to_process(&self, size: f64, dst_process: ProcessId) {
@@ -93,9 +110,13 @@ impl ClusterHost {
             .as_ref()
             .expect("network must be configured to call network operations");
 
-        let req_id = network.borrow_mut().transfer_data(src, dst, size, self.ctx.id());
+        let req_id = network
+            .borrow_mut()
+            .transfer_data(src, dst, size, self.ctx.id());
 
-        self.ctx.recv_event_by_key::<DataTransferCompleted>(req_id as u64).await;
+        self.ctx
+            .recv_event_by_key::<DataTransferCompleted>(req_id as u64)
+            .await;
     }
 
     pub async fn write_data(&self, size: u64) -> Result<(), String> {
@@ -135,8 +156,10 @@ impl ClusterHost {
     }
 
     pub fn log_compute_load(&self) {
-        let cpu_used = self.compute.borrow().cores_total() - self.compute.borrow().cores_available();
-        let memory_used = self.compute.borrow().memory_total() - self.compute.borrow().memory_available();
+        let cpu_used =
+            self.compute.borrow().cores_total() - self.compute.borrow().cores_available();
+        let memory_used =
+            self.compute.borrow().memory_total() - self.compute.borrow().memory_available();
         self.monitoring.borrow_mut().update_host(
             self.ctx.time(),
             self.ctx.name(),

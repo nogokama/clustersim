@@ -1,7 +1,6 @@
-use std::collections::HashMap;
+use rustc_hash::FxHashMap;
 
 use dslab_core::Id;
-use rustc_hash::FxHashMap;
 
 use crate::workload_generators::events::{CollectionRequest, ExecutionRequest};
 
@@ -16,8 +15,8 @@ pub struct SharedInfoStorage {
     process_to_host: FxHashMap<u64, Id>,
 }
 
-impl SharedInfoStorage {
-    pub fn new() -> SharedInfoStorage {
+impl Default for SharedInfoStorage {
+    fn default() -> SharedInfoStorage {
         let mut executions_info = FxHashMap::default();
         executions_info.reserve(2_000_000);
         SharedInfoStorage {
@@ -29,9 +28,11 @@ impl SharedInfoStorage {
             executions_info_max_len: 0,
         }
     }
+}
 
+impl SharedInfoStorage {
     pub fn get_host_id(&self, process_id: u64) -> Id {
-        self.process_to_host.get(&process_id).unwrap().clone()
+        *self.process_to_host.get(&process_id).unwrap()
     }
 
     pub fn set_host_id(&mut self, process_id: u64, host_id: Id) {
@@ -68,12 +69,7 @@ impl SharedInfoStorage {
         self.executions_info.get(&id).unwrap().clone()
     }
 
-    pub fn set_execution_request(
-        &mut self,
-        id: u64,
-        generator_id: usize,
-        task_request: ExecutionRequest,
-    ) {
+    pub fn set_execution_request(&mut self, id: u64, task_request: ExecutionRequest) {
         self.executions_info.insert(id, task_request);
         self.executions_info_max_len = self.executions_info_max_len.max(self.executions_info.len());
     }

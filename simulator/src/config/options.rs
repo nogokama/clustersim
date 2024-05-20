@@ -1,7 +1,5 @@
 //! Config utils.
 
-use std::collections::HashMap;
-
 use rustc_hash::FxHashMap;
 
 /// Parses config value string, which consists of two parts - name and options.
