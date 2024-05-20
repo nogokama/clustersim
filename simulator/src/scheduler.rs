@@ -31,7 +31,7 @@ pub struct SchedulerStats {
     pub on_host_resources_time: Option<u64>,
 }
 
-pub trait CustomScheduler {
+pub trait CustomScheduler: EventHandler {
     fn name(&self) -> String;
     fn id(&self) -> Id;
     fn get_stats(&self) -> SchedulerStats {

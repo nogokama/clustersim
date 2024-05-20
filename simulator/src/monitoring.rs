@@ -1,6 +1,7 @@
 use std::{
-    fs::File,
+    fs::{self, File, OpenOptions},
     io::{BufWriter, Write},
+    path::{Path, PathBuf},
 };
 
 use rustc_hash::FxHashMap;
@@ -243,6 +244,8 @@ pub struct Monitoring {
     pub collect_executions_scheduled_time: bool,
     pub executions_scheduled_time: FxHashMap<u64, f64>,
 
+    pub output_dir: Option<String>,
+
     host_log_file: BufWriter<File>,
     scheduler_log_file: BufWriter<File>,
     fair_share_log_file: BufWriter<File>,
@@ -250,16 +253,34 @@ pub struct Monitoring {
 
 impl Monitoring {
     pub fn new(config: MonitoringConfig) -> Monitoring {
-        let host_log_file_path = &config.host_logs_file_name.unwrap_or("load.txt".to_string());
-        let scheduler_log_file_path = &config
-            .scheduler_queue_logs_file_name
-            .unwrap_or("scheduler_info.txt".to_string());
-        let fair_share_log_file_path = config
-            .fair_share_logs_file_name
-            .unwrap_or("fair_share.txt".to_string());
+        let host_log_file_path = Self::create_file_path(
+            config.output_dir.as_ref(),
+            &config.host_logs_file_name.unwrap_or("load.csv".to_string()),
+        );
+        let scheduler_log_file_path = Self::create_file_path(
+            config.output_dir.as_ref(),
+            &config
+                .scheduler_queue_logs_file_name
+                .unwrap_or("scheduler_info.csv".to_string()),
+        );
+        let fair_share_log_file_path = Self::create_file_path(
+            config.output_dir.as_ref(),
+            &config
+                .fair_share_logs_file_name
+                .unwrap_or("fair_share.csv".to_string()),
+        );
+
+        println!("OUTPUT DIRECTORY: {}", host_log_file_path);
+        if let Some(parent) = Path::new(&host_log_file_path).parent() {
+            fs::create_dir_all(parent).unwrap();
+        }
 
         let mut host_log_file = BufWriter::new(
-            File::create(host_log_file_path).expect("Failed to create hosts load log file"),
+            OpenOptions::new()
+                .write(true)
+                .create(true)
+                .open(&host_log_file_path)
+                .expect("Failed to create hosts load log file"),
         );
         writeln!(
             &mut host_log_file,
@@ -267,11 +288,22 @@ impl Monitoring {
         )
         .unwrap();
 
-        let mut scheduler_log_file = BufWriter::new(File::create(scheduler_log_file_path).unwrap());
+        let mut scheduler_log_file = BufWriter::new(
+            OpenOptions::new()
+                .write(true)
+                .create(true)
+                .open(&scheduler_log_file_path)
+                .unwrap(),
+        );
         writeln!(&mut scheduler_log_file, "time,queue_size,user").unwrap();
 
-        let mut fair_share_log_file =
-            BufWriter::new(File::create(fair_share_log_file_path).unwrap());
+        let mut fair_share_log_file = BufWriter::new(
+            OpenOptions::new()
+                .write(true)
+                .create(true)
+                .open(&fair_share_log_file_path)
+                .unwrap(),
+        );
         writeln!(&mut fair_share_log_file, "time,user,share").unwrap();
 
         Monitoring {
@@ -296,7 +328,23 @@ impl Monitoring {
                 .collect_executions_scheduled_time
                 .unwrap_or(false),
             executions_scheduled_time: FxHashMap::default(),
+            output_dir: config.output_dir.clone(),
         }
+    }
+
+    fn create_file_path(output_dir: Option<&String>, file_name: &str) -> String {
+        if let Some(output_dir) = output_dir {
+            PathBuf::from_iter(&[output_dir, file_name])
+                .to_str()
+                .unwrap()
+                .to_string()
+        } else {
+            "/dev/null".to_string()
+        }
+    }
+
+    pub fn get_output_dir(&self) -> Option<String> {
+        self.output_dir.clone()
     }
 
     pub fn add_execution_scheduled_time(&mut self, execution_id: u64, time: f64) {

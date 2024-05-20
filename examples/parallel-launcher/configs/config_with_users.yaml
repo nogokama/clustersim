@@ -1,0 +1,74 @@
+--- 
+workload:
+  - type: Random
+    options: 
+      execution_count: 1000
+      cpu_min: 10
+      cpu_max: 15
+      memory_min: 1
+      memory_max: 5
+      delay_min: 1
+      delay_max: 4
+      duration_mean: 180
+      duration_dev: 30
+      collection_id: 0
+      user: user0
+  - type: Random
+    options: 
+      execution_count: 1000
+      cpu_min: 1
+      cpu_max: 4
+      memory_min: 5
+      memory_max: 9
+      delay_min: 10
+      delay_max: 40
+      duration_mean: 300
+      duration_dev: 30
+      collection_id: 1
+      user: user1
+
+
+hosts: 
+  - count: 5
+    cpus: 20
+    cpu_speed: 1
+    memory: 100
+    name_prefix: m1
+
+  - count: 5
+    cpus: 5
+    memory: 80
+    name_prefix: m2
+
+  - count: 5
+    cpus: 5
+    cpu_speed: 1
+    memory: 50
+    name_prefix: m3
+
+  - count: 5
+    cpus: 25
+    memory: 20
+    name_prefix: c1
+  
+  - count: 5
+    cpus: 10
+    memory: 30
+    name_prefix: c2
+  
+  - count: 5 
+    cpus: 15
+    memory: 15 
+    name_prefix: c3
+  
+  - count: 5
+    cpus: 20
+    memory: 10 
+    name_prefix: c4
+  
+
+monitoring:
+  host_load_compression_time_interval: 100
+  scheduler_queue_compression_time_interval: 100
+  display_host_load: false 
+  output_dir: output/second

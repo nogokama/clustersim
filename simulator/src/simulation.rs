@@ -42,8 +42,13 @@ pub struct ClusterSchedulingSimulation {
 
     shared_info_storage: Rc<RefCell<SharedInfoStorage>>,
 
+    scheduler: Option<Rc<RefCell<dyn CustomScheduler>>>,
+    scheduler_handler: Option<Rc<RefCell<dyn EventHandler>>>,
+
     profile_builder: ProfileBuilder,
 }
+
+unsafe impl Send for ClusterSchedulingSimulation {}
 
 impl ClusterSchedulingSimulation {
     pub fn new(
@@ -106,6 +111,8 @@ impl ClusterSchedulingSimulation {
             monitoring,
             workload_queue_watcher,
             profile_builder,
+            scheduler: None,
+            scheduler_handler: None,
         };
 
         cluster_simulation.register_key_getters();
@@ -123,6 +130,10 @@ impl ClusterSchedulingSimulation {
         cluster_simulation.build_cluster(config.hosts, hosts, config.network, network_opt);
 
         cluster_simulation
+    }
+
+    pub fn get_output_dir(&self) -> Option<String> {
+        self.monitoring.borrow().get_output_dir()
     }
 
     pub fn get_cluster_id(&self) -> Id {
@@ -268,13 +279,21 @@ impl ClusterSchedulingSimulation {
         self.profile_builder.register_profile::<T, &str>(name)
     }
 
-    pub fn run_with_custom_scheduler<T: EventHandler + CustomScheduler + 'static>(
+    pub fn set_custom_scheduler<T: CustomScheduler + EventHandler + 'static>(
         &mut self,
         scheduler: T,
     ) {
-        let scheduler_id = scheduler.id();
-        let name = scheduler.name().clone();
-        self.sim.add_handler(name, rc!(refcell!(scheduler)));
+        let pointer = Rc::new(RefCell::new(scheduler));
+        self.scheduler = Some(pointer.clone());
+        self.scheduler_handler = Some(pointer.clone());
+    }
+
+    pub fn run(&mut self) {
+        let scheduler_id = self.scheduler.as_ref().unwrap().borrow().id();
+        let name = self.scheduler.as_ref().unwrap().borrow().name().clone();
+
+        self.sim
+            .add_handler(name, self.scheduler_handler.as_ref().unwrap().clone());
 
         let host_generator_ctx = self.sim.create_context("host_generator");
         let hosts = self.cluster.borrow().get_hosts();
@@ -337,11 +356,24 @@ impl ClusterSchedulingSimulation {
         );
     }
 
-    pub fn run_with_scheduler<T: Scheduler + 'static>(&mut self, scheduler: T) {
+    pub fn set_scheduler<T: Scheduler + 'static>(&mut self, scheduler: T) {
         let ctx = self.sim.create_context("scheduler");
         let invoker = SchedulerInvoker::new(scheduler, ctx, self.get_cluster_id());
 
-        self.run_with_custom_scheduler(invoker);
+        self.set_custom_scheduler(invoker);
+    }
+
+    pub fn run_with_custom_scheduler<T: CustomScheduler + EventHandler + 'static>(
+        &mut self,
+        scheduler: T,
+    ) {
+        self.set_custom_scheduler(scheduler);
+        self.run();
+    }
+
+    pub fn run_with_scheduler<T: Scheduler + 'static>(&mut self, scheduler: T) {
+        self.set_scheduler(scheduler);
+        self.run();
     }
 
     fn register_key_getters(&self) {

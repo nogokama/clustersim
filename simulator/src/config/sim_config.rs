@@ -135,7 +135,7 @@ pub enum MonitoringLevel {
     Detailed,
 }
 
-#[derive(Debug, PartialEq, Serialize, Deserialize, Clone)]
+#[derive(Debug, PartialEq, Serialize, Deserialize, Clone, Default)]
 pub struct MonitoringConfig {
     pub host_load_compression_time_interval: Option<f64>,
     pub scheduler_queue_compression_time_interval: Option<f64>,
@@ -145,21 +145,7 @@ pub struct MonitoringConfig {
     pub scheduler_queue_logs_file_name: Option<String>,
     pub fair_share_logs_file_name: Option<String>,
     pub collect_executions_scheduled_time: Option<bool>,
-}
-
-impl Default for MonitoringConfig {
-    fn default() -> Self {
-        Self {
-            host_load_compression_time_interval: None,
-            scheduler_queue_compression_time_interval: None,
-            display_host_load: Some(true),
-            collect_user_queues: Some(true),
-            host_logs_file_name: None,
-            scheduler_queue_logs_file_name: None,
-            fair_share_logs_file_name: None,
-            collect_executions_scheduled_time: None,
-        }
-    }
+    pub output_dir: Option<String>,
 }
 
 /// Represents simulation configuration.

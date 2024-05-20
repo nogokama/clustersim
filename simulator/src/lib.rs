@@ -4,6 +4,7 @@ pub mod config;
 pub mod execution_profiles;
 pub mod host;
 pub mod monitoring;
+pub mod parallel_launcher;
 pub mod proxy;
 pub mod scheduler;
 pub mod simulation;
