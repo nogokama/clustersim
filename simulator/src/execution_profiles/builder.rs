@@ -7,7 +7,10 @@ use sugars::{rc, refcell};
 
 use super::{
     combinators::{ParallelProfile, ProfileCombinator, SequentialProfile},
-    default::{CommunicationHomogenous, CpuBurnHomogenous, Idle},
+    default::{
+        CommunicationExternal, CommunicationHomogenous, CommunicationMatrix, CommunicationSrcDst,
+        ComputeHomogenous, ComputeVector, DiskOps, Idle,
+    },
     profile::{ExecutionProfile, NameTrait},
 };
 
@@ -33,8 +36,8 @@ impl Default for ProfileBuilder {
         let constructors: Rc<RefCell<FxHashMap<String, ConstructorFn>>> =
             rc!(refcell!(FxHashMap::default()));
         constructors.borrow_mut().insert(
-            CpuBurnHomogenous::get_name(),
-            Rc::new(from_yaml::<CpuBurnHomogenous>),
+            ComputeHomogenous::get_name(),
+            Rc::new(from_yaml::<ComputeHomogenous>),
         );
         constructors.borrow_mut().insert(
             CommunicationHomogenous::get_name(),
@@ -43,6 +46,25 @@ impl Default for ProfileBuilder {
         constructors
             .borrow_mut()
             .insert(Idle::get_name(), Rc::new(from_yaml::<Idle>));
+        constructors.borrow_mut().insert(
+            ComputeVector::get_name(),
+            Rc::new(from_yaml::<ComputeVector>),
+        );
+        constructors.borrow_mut().insert(
+            CommunicationMatrix::get_name(),
+            Rc::new(from_yaml::<CommunicationMatrix>),
+        );
+        constructors.borrow_mut().insert(
+            CommunicationSrcDst::get_name(),
+            Rc::new(from_yaml::<CommunicationSrcDst>),
+        );
+        constructors.borrow_mut().insert(
+            CommunicationExternal::get_name(),
+            Rc::new(from_yaml::<CommunicationExternal>),
+        );
+        constructors
+            .borrow_mut()
+            .insert(DiskOps::get_name(), Rc::new(from_yaml::<DiskOps>));
 
         let mut constructors_clone = constructors.clone();
         constructors.borrow_mut().insert(

@@ -10,7 +10,7 @@ use serde::Deserialize;
 
 use crate::{
     config::sim_config::HostConfig,
-    execution_profiles::{default::CpuBurnHomogenous, profile::NameTrait},
+    execution_profiles::{default::ComputeHomogenous, profile::NameTrait},
     workload_generators::google_protos::events::{EventType, MachineEvent},
 };
 
@@ -124,7 +124,7 @@ impl WorkloadGenerator for GoogleTraceWorkloadGenerator {
                         cpu_per_node: d.cpus,
                         memory_per_node: d.memory,
                     },
-                    Rc::new(CpuBurnHomogenous {
+                    Rc::new(ComputeHomogenous {
                         compute_work: d.flops,
                     }),
                 )
@@ -273,8 +273,8 @@ impl GoogleTraceWorkloadGenerator {
                     memory_per_node: d.memory,
                 },
                 profile: crate::execution_profiles::builder::ProfileDefinition::Detailed {
-                    r#type: CpuBurnHomogenous::get_name(),
-                    args: serde_yaml::to_value(CpuBurnHomogenous {
+                    r#type: ComputeHomogenous::get_name(),
+                    args: serde_yaml::to_value(ComputeHomogenous {
                         compute_work: d.flops,
                     })
                     .unwrap(),
