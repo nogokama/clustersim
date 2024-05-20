@@ -11,6 +11,7 @@ use dslab_scheduling::{
     scheduler::{CustomScheduler, HostAvailableResources, Scheduler, SchedulerContext},
     workload_generators::events::{ExecutionRequest, ExecutionRequestEvent, ResourcesPack},
 };
+use rustc_hash::FxHashMap;
 
 pub struct ExecutionInfo {
     id: u64,
@@ -20,18 +21,18 @@ pub struct ExecutionInfo {
 
 pub struct RoundRobinScheduler {
     hosts: Vec<HostConfig>,
-    available_resources: HashMap<Id, ResourcesPack>,
+    available_resources: FxHashMap<Id, ResourcesPack>,
     queue: VecDeque<ExecutionInfo>,
-    executions: HashMap<u64, ResourcesPack>,
+    executions: FxHashMap<u64, ResourcesPack>,
 }
 
 impl RoundRobinScheduler {
     pub fn new() -> RoundRobinScheduler {
         RoundRobinScheduler {
             hosts: Vec::new(),
-            available_resources: HashMap::new(),
+            available_resources: FxHashMap::default(),
             queue: VecDeque::new(),
-            executions: HashMap::new(),
+            executions: FxHashMap::default(),
         }
     }
 

@@ -2,14 +2,14 @@
 workload:
   - type: Alibaba
     options:
-      batch_instance: /Users/makogon/university/diploma/traces/alibaba/clusterdata/cluster-trace-v2018/data/batch_instance_1d.csv 
-      full_limit: 5000000
-      buffer_limit: 4000000
+      batch_instance: /Users/makogon/university/diploma/traces/alibaba/clusterdata/cluster-trace-v2018/data/sorted_2d.csv 
+      full_limit: 200000
+      # full_limit: 376737126 
       resource_multiplier: 10000
 
 hosts: 
-  - count: 20
-    cpus: 10000
+  - count: 4000
+    cpus: 9600
     memory: 1000000
     name_prefix: m1
 
@@ -17,9 +17,9 @@ hosts:
 
 monitoring:
   host_load_compression_time_interval: 100
-  scheduler_queue_compression_time_interval: 100
+  scheduler_queue_compression_time_interval: 1000
   display_host_load: false 
   collect_user_queues: true
 
 scheduler:
-  hosts_invoke_interval: 1000
+  hosts_invoke_interval: 500

@@ -1,6 +1,7 @@
 use std::{collections::BinaryHeap, fs::File, rc::Rc};
 
 use csv::Reader;
+use dslab_core::log_warn;
 use serde::{Deserialize, Serialize};
 
 use crate::{execution_profiles::default::Idle, workload_generators::events::ResourceRequirements};
@@ -12,22 +13,18 @@ struct Options {
     pub batch_instance: String,
     pub resource_multiplier: f64,
     pub full_limit: Option<u64>,
-    pub buffer_limit: u64,
 }
 
 pub struct AlibabaTraceReader {
     options: Options,
     reader: Reader<File>,
     cnt_records: u64,
-    time_offset: f64,
-    skipped_because_of_time: u64,
-    buffer: BinaryHeap<InstanceRecord>,
 }
 
 impl AlibabaTraceReader {
     pub fn from_options(options: &serde_yaml::Value) -> Self {
         let options: Options = serde_yaml::from_value(options.clone()).unwrap();
-        let mut reader = Reader::from_path(&options.batch_instance).unwrap();
+        let reader = Reader::from_path(&options.batch_instance).unwrap();
 
         // reader.set_headers(csv::StringRecord::from(AlibabaTraceReader::get_headers().as_ref()));
 
@@ -35,9 +32,6 @@ impl AlibabaTraceReader {
             options,
             reader,
             cnt_records: 0,
-            time_offset: 0.,
-            skipped_because_of_time: 0,
-            buffer: BinaryHeap::new(),
         }
     }
 
@@ -64,13 +58,13 @@ impl AlibabaTraceReader {
 #[derive(Debug, Serialize, Deserialize)]
 struct InstanceRecord {
     instance_name: String,
-    task_name: String,
-    job_name: String,
-    task_type: String,
-    status: String,
+    task_name: Option<String>,
+    job_name: Option<String>,
+    task_type: Option<String>,
+    status: Option<String>,
     start_time: Option<f64>,
     end_time: Option<f64>,
-    total_seq_no: u64,
+    total_seq_no: Option<u64>,
     cpu_max: Option<f64>,
     mem_max: Option<f64>,
 }
@@ -96,42 +90,72 @@ impl Ord for InstanceRecord {
 }
 
 impl WorkloadGenerator for AlibabaTraceReader {
-    fn get_workload(&mut self, ctx: &dslab_core::SimulationContext, limit: Option<u64>) -> Vec<ExecutionRequest> {
+    fn get_workload(
+        &mut self,
+        ctx: &dslab_core::SimulationContext,
+        limit: Option<u64>,
+    ) -> Vec<ExecutionRequest> {
         let mut requests = vec![];
+
+        if let Some(full_limit) = self.options.full_limit {
+            if self.cnt_records >= full_limit {
+                return requests;
+            }
+        }
 
         if let Some(limit) = limit {
             requests.reserve(limit as usize);
         }
 
-        let mut cnt = 0;
+        let start_cnt = self.cnt_records;
+
         for record in self.reader.deserialize() {
-            cnt += 1;
-            if let Some(full_limit) = self.options.full_limit {
-                if cnt >= full_limit {
-                    break;
+            let record: InstanceRecord = record.unwrap();
+            if let Some(status) = record.status.as_ref() {
+                if status != "Terminated" {
+                    continue;
                 }
             }
 
-            let record: InstanceRecord = record.unwrap();
-            if record.status != "Terminated" {
+            if record.cpu_max.is_none() || record.mem_max.is_none() {
                 continue;
             }
-            if record.cpu_max.is_none() || record.mem_max.is_none() {
+
+            let cpu = record.cpu_max.unwrap();
+            let mem = record.mem_max.unwrap();
+            if cpu < 1. || cpu > 9600. || mem < 0. || mem > 100. {
+                log_warn!(ctx, "Invalid record: {:?}", record);
                 continue;
             }
 
             requests.push(ExecutionRequest::simple(
                 record.start_time.unwrap(),
                 ResourceRequirements::simple(
-                    (record.cpu_max.unwrap()) as u32,
-                    (record.mem_max.unwrap() * self.options.resource_multiplier) as u64,
+                    cpu as u32,
+                    (mem * self.options.resource_multiplier) as u64,
                 ),
                 Rc::new(Idle {
                     time: record.end_time.unwrap() - record.start_time.unwrap(),
                 }),
             ));
+
+            self.cnt_records += 1;
+            if let Some(full_limit) = self.options.full_limit {
+                if self.cnt_records >= full_limit {
+                    break;
+                }
+            }
+            if let Some(limit) = limit {
+                if self.cnt_records - start_cnt >= limit {
+                    break;
+                }
+            }
         }
 
         requests
+    }
+
+    fn get_full_size_hint(&self) -> Option<u64> {
+        self.options.full_limit
     }
 }

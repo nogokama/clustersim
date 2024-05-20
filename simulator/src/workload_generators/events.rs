@@ -28,7 +28,11 @@ pub struct ExecutionRequest {
 }
 
 impl ExecutionRequest {
-    pub fn simple(time: f64, resources: ResourceRequirements, profile: Rc<dyn ExecutionProfile>) -> Self {
+    pub fn simple(
+        time: f64,
+        resources: ResourceRequirements,
+        profile: Rc<dyn ExecutionProfile>,
+    ) -> Self {
         Self {
             id: None,
             name: None,
@@ -116,7 +120,7 @@ impl ResourcesPack {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct ResourceRequirements {
     pub nodes_count: u32,
     pub cpu_per_node: u32,

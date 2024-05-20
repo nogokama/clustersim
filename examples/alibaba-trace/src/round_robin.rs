@@ -5,19 +5,20 @@ use dslab_scheduling::{
     scheduler::{HostAvailableResources, Scheduler, SchedulerContext},
     workload_generators::events::{ExecutionRequest, ResourcesPack},
 };
+use rustc_hash::FxHashMap;
 
 pub struct RoundRobinScheduler {
     queue: VecDeque<ExecutionRequest>,
-    resources: HashMap<Id, ResourcesPack>,
-    execution_resources: HashMap<u64, ResourcesPack>,
+    resources: FxHashMap<Id, ResourcesPack>,
+    execution_resources: FxHashMap<u64, ResourcesPack>,
 }
 
 impl RoundRobinScheduler {
     pub fn new() -> Self {
         Self {
             queue: VecDeque::new(),
-            resources: HashMap::new(),
-            execution_resources: HashMap::new(),
+            resources: FxHashMap::default(),
+            execution_resources: FxHashMap::default(),
         }
     }
 }

@@ -14,7 +14,7 @@ use dslab_scheduling::{
 pub struct TetrisScheduler {
     cluster_id: Id,
     machines: Vec<Machine>,
-    available_resources: HashMap<Id, Resources>,
+    available_resources: FxHashMap<Id, Resources>,
     queue: VecDeque<JobInfo>,
 
     ctx: SimulationContext,
@@ -25,7 +25,7 @@ impl TetrisScheduler {
         TetrisScheduler {
             cluster_id,
             machines: Vec::new(),
-            available_resources: HashMap::new(),
+            available_resources: FxHashMap::default(),
             queue: VecDeque::new(),
             ctx,
         }

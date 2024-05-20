@@ -3,6 +3,7 @@ use std::{cell::RefCell, collections::HashMap, hash::Hash, rc::Rc};
 
 use async_trait::async_trait;
 use maplit::hashmap;
+use rustc_hash::FxHashMap;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use sugars::{rc, refcell};
 
@@ -25,12 +26,12 @@ pub type ConstructorFn = Rc<dyn Fn(&serde_yaml::Value) -> Rc<dyn ExecutionProfil
 
 #[derive(Clone)]
 pub struct ProfileBuilder {
-    pub constructors: Rc<RefCell<HashMap<String, ConstructorFn>>>,
+    pub constructors: Rc<RefCell<FxHashMap<String, ConstructorFn>>>,
 }
 
 impl ProfileBuilder {
     pub fn new() -> Self {
-        let constructors: Rc<RefCell<HashMap<String, ConstructorFn>>> = rc!(refcell!(HashMap::new()));
+        let constructors: Rc<RefCell<FxHashMap<String, ConstructorFn>>> = rc!(refcell!(FxHashMap::default()));
         constructors
             .borrow_mut()
             .insert(CpuBurnHomogenous::get_name(), Rc::new(from_yaml::<CpuBurnHomogenous>));
@@ -105,7 +106,7 @@ impl ProfileBuilder {
 
     fn build_raw(
         profile: ProfileDefinition,
-        constructors: &Rc<RefCell<HashMap<String, ConstructorFn>>>,
+        constructors: &Rc<RefCell<FxHashMap<String, ConstructorFn>>>,
     ) -> Rc<dyn ExecutionProfile> {
         match profile {
             ProfileDefinition::Simple(profile_name) => {
@@ -144,7 +145,7 @@ struct CombinatorDefinition {
 
 pub fn parse_combinator<T: ProfileCombinator>(
     yaml: &serde_yaml::Value,
-    constructors: Rc<RefCell<HashMap<String, ConstructorFn>>>,
+    constructors: Rc<RefCell<FxHashMap<String, ConstructorFn>>>,
 ) -> Rc<T> {
     let combinator: CombinatorDefinition = serde_yaml::from_value(yaml.clone()).unwrap();
     let profiles = combinator

@@ -11,6 +11,7 @@ use dslab_scheduling::{
     scheduler::{CustomScheduler, HostAvailableResources, Scheduler, SchedulerContext},
     workload_generators::events::{CollectionRequest, ExecutionRequest, ExecutionRequestEvent, ResourcesPack},
 };
+use rustc_hash::FxHashMap;
 
 #[derive(Clone)]
 pub struct ExecutionInfo {
@@ -30,15 +31,15 @@ fn tetris_function(pack_a: &ResourcesPack, pack_b: &ResourcesPack) -> f64 {
 
 pub struct FairTetrisScheduler {
     hosts: Vec<HostConfig>,
-    queues: HashMap<Option<String>, VecDeque<ExecutionInfo>>,
-    fair_shares: HashMap<String, f64>,
+    queues: FxHashMap<Option<String>, VecDeque<ExecutionInfo>>,
+    fair_shares: FxHashMap<String, f64>,
 
     total_cluster_resources: ResourcesPack,
-    user_resources: HashMap<String, ResourcesPack>,
+    user_resources: FxHashMap<String, ResourcesPack>,
 
-    collection_id_to_user: HashMap<u64, String>,
+    collection_id_to_user: FxHashMap<u64, String>,
 
-    executions: HashMap<u64, ExecutionInfo>,
+    executions: FxHashMap<u64, ExecutionInfo>,
 
     scheduled: u64,
     fair_fraction: f64,
@@ -48,16 +49,16 @@ impl FairTetrisScheduler {
     pub fn new(fair_fraction: f64) -> FairTetrisScheduler {
         assert!(0. <= fair_fraction && fair_fraction <= 1.);
 
-        let mut queues = HashMap::new();
+        let mut queues = FxHashMap::default();
         queues.insert(None, VecDeque::new());
         FairTetrisScheduler {
             hosts: Vec::new(),
             queues,
-            fair_shares: HashMap::new(),
+            fair_shares: FxHashMap::default(),
             total_cluster_resources: ResourcesPack::default(),
-            user_resources: HashMap::new(),
-            collection_id_to_user: HashMap::new(),
-            executions: HashMap::new(),
+            user_resources: FxHashMap::default(),
+            collection_id_to_user: FxHashMap::default(),
+            executions: FxHashMap::default(),
             fair_fraction,
             scheduled: 0,
         }

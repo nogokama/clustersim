@@ -10,3 +10,4 @@ pub mod scheduler;
 pub mod simulation;
 pub mod storage;
 pub mod workload_generators;
+pub mod workload_queue_watcher;

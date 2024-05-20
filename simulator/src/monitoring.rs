@@ -7,6 +7,7 @@ use std::{
 
 use csv::Writer;
 use dslab_core::Id;
+use rustc_hash::FxHashMap;
 use serde::Serialize;
 
 use crate::config::sim_config::{HostConfig, MonitoringConfig};
@@ -218,21 +219,25 @@ impl LoadInfo {
 
 pub struct Monitoring {
     // hosts load
-    pub hosts: HashMap<String, LoadInfo>,
-    pub groups: HashMap<String, LoadInfo>,
+    pub hosts: FxHashMap<String, LoadInfo>,
+    pub groups: FxHashMap<String, LoadInfo>,
     pub total: LoadInfo,
     pub host_load_compression_time_interval: Option<f64>,
     pub display_host_load: bool,
 
     // scheduler queues
     pub scheduler_queue_size: ResourceLoad,
-    pub scheduler_queue_size_by_user: HashMap<String, ResourceLoad>,
+    pub scheduler_queue_size_by_user: FxHashMap<String, ResourceLoad>,
     pub scheduler_time_compression_interval: Option<f64>,
     pub collect_user_queues: bool,
 
     // users dominant shares
-    pub user_dominant_shares: HashMap<String, ResourceLoad>,
-    pub user_resources: HashMap<String, LoadInfo>,
+    pub user_dominant_shares: FxHashMap<String, ResourceLoad>,
+    pub user_resources: FxHashMap<String, LoadInfo>,
+
+    // executions scheduled details
+    pub collect_executions_scheduled_time: bool,
+    pub executions_scheduled_time: FxHashMap<u64, f64>,
 
     host_log_file: BufWriter<File>,
     scheduler_log_file: BufWriter<File>,
@@ -258,11 +263,11 @@ impl Monitoring {
         writeln!(&mut fair_share_log_file, "time,user,share").unwrap();
 
         Monitoring {
-            hosts: HashMap::new(),
-            groups: HashMap::new(),
+            hosts: FxHashMap::default(),
+            groups: FxHashMap::default(),
             total: LoadInfo::new(0., 0., 0., None, config.host_load_compression_time_interval),
             scheduler_queue_size: ResourceLoad::new_absolute(0., config.scheduler_queue_compression_time_interval),
-            scheduler_queue_size_by_user: HashMap::new(),
+            scheduler_queue_size_by_user: FxHashMap::default(),
             host_log_file,
             scheduler_log_file,
             fair_share_log_file,
@@ -270,8 +275,16 @@ impl Monitoring {
             host_load_compression_time_interval: config.host_load_compression_time_interval,
             display_host_load: config.display_host_load.unwrap_or(false),
             scheduler_time_compression_interval: config.scheduler_queue_compression_time_interval,
-            user_dominant_shares: HashMap::new(),
-            user_resources: HashMap::new(),
+            user_dominant_shares: FxHashMap::default(),
+            user_resources: FxHashMap::default(),
+            collect_executions_scheduled_time: config.collect_executions_scheduled_time.unwrap_or(false),
+            executions_scheduled_time: FxHashMap::default(),
+        }
+    }
+
+    pub fn add_execution_scheduled_time(&mut self, execution_id: u64, time: f64) {
+        if self.collect_executions_scheduled_time {
+            self.executions_scheduled_time.insert(execution_id, time);
         }
     }
 

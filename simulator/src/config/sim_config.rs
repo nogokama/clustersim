@@ -146,6 +146,7 @@ pub struct MonitoringConfig {
     pub host_logs_file_name: Option<String>,
     pub scheduler_queue_logs_file_name: Option<String>,
     pub fair_share_logs_file_name: Option<String>,
+    pub collect_executions_scheduled_time: Option<bool>,
 }
 
 impl Default for MonitoringConfig {
@@ -158,6 +159,7 @@ impl Default for MonitoringConfig {
             host_logs_file_name: None,
             scheduler_queue_logs_file_name: None,
             fair_share_logs_file_name: None,
+            collect_executions_scheduled_time: None,
         }
     }
 }

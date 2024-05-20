@@ -8,6 +8,7 @@ use std::{
 };
 
 use csv::ReaderBuilder;
+use rustc_hash::FxHashMap;
 use serde::Deserialize;
 
 use crate::{
@@ -145,13 +146,13 @@ impl GoogleTraceWorkloadGenerator {
             )),
         ));
 
-        let mut submit_time = HashMap::new();
-        let mut schedule_time = HashMap::new();
-        let mut finished_time = HashMap::new();
+        let mut submit_time = FxHashMap::default();
+        let mut schedule_time = FxHashMap::default();
+        let mut finished_time = FxHashMap::default();
         let mut skip_ids = HashSet::new();
 
-        let mut cpus_mapping = HashMap::new();
-        let mut memory_mapping = HashMap::new();
+        let mut cpus_mapping = FxHashMap::default();
+        let mut memory_mapping = FxHashMap::default();
 
         let mut cnt = 0;
         let mut events = Vec::new();

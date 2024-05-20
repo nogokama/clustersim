@@ -10,6 +10,7 @@ use dslab_network::{
     DataTransferCompleted, Network, NetworkModel,
 };
 use dslab_storage::disk::DiskBuilder;
+use rustc_hash::FxHashSet;
 use serde::de::DeserializeOwned;
 use sugars::{boxed, rc, refcell};
 
@@ -33,15 +34,17 @@ use crate::{
         random::RandomWorkloadGenerator,
         workload_type::workload_resolver,
     },
+    workload_queue_watcher::WorkloadQueueWatcher,
 };
 
 pub struct ClusterSchedulingSimulation {
     sim: Simulation,
-    workload_generators: Vec<Box<RefCell<dyn WorkloadGenerator>>>,
 
     cluster: Rc<RefCell<Cluster>>,
     proxy: Rc<RefCell<Proxy>>,
     monitoring: Rc<RefCell<Monitoring>>,
+    workload_queue_watcher: Rc<RefCell<WorkloadQueueWatcher>>,
+
     shared_info_storage: Rc<RefCell<SharedInfoStorage>>,
 
     profile_builder: ProfileBuilder,
@@ -53,7 +56,9 @@ impl ClusterSchedulingSimulation {
         config: SimulationConfig,
         network_opt: Option<Rc<RefCell<Network>>>,
     ) -> ClusterSchedulingSimulation {
-        let monitoring = rc!(refcell!(Monitoring::new(config.monitoring.unwrap_or_default())));
+        let monitoring = rc!(refcell!(Monitoring::new(
+            config.monitoring.unwrap_or_default()
+        )));
         let shared_storage = rc!(refcell!(SharedInfoStorage::new()));
 
         let cluster_ctx = sim.create_context("cluster");
@@ -75,24 +80,36 @@ impl ClusterSchedulingSimulation {
         )));
         sim.add_handler("proxy", proxy.clone());
 
-        let generator_ctx = sim.create_context("generator");
+        let generator_ctx = sim.create_context("queue_watcher");
 
         let profile_builder = ProfileBuilder::new();
 
+        let workload_generators = config
+            .workload
+            .as_ref()
+            .unwrap()
+            .iter()
+            .map(|w| workload_resolver(w, profile_builder.clone()))
+            .collect::<Vec<_>>();
+
+        let workload_queue_watcher = rc!(refcell!(WorkloadQueueWatcher::new(
+            generator_ctx,
+            shared_storage.clone(),
+            proxy.borrow().get_id(),
+            cluster.borrow().get_id(),
+            workload_generators,
+        )));
+
+        sim.add_handler("queue_watcher", workload_queue_watcher.clone());
+
         let mut cluster_simulation = ClusterSchedulingSimulation {
             sim,
-            workload_generators: config
-                .workload
-                .as_ref()
-                .unwrap()
-                .iter()
-                .map(|w| workload_resolver(w, profile_builder.clone()))
-                .collect::<Vec<_>>(),
+
             cluster,
             proxy,
             shared_info_storage: shared_storage,
             monitoring,
-
+            workload_queue_watcher,
             profile_builder,
         };
 
@@ -237,7 +254,9 @@ impl ClusterSchedulingSimulation {
             host_ctx
         ));
 
-        self.monitoring.borrow_mut().add_host(host_name.clone(), &host_config);
+        self.monitoring
+            .borrow_mut()
+            .add_host(host_name.clone(), &host_config);
 
         cluster.add_host(host_config, host);
     }
@@ -254,7 +273,10 @@ impl ClusterSchedulingSimulation {
         self.profile_builder.register_profile::<T, &str>(name)
     }
 
-    pub fn run_with_custom_scheduler<T: EventHandler + CustomScheduler + 'static>(&mut self, scheduler: T) {
+    pub fn run_with_custom_scheduler<T: EventHandler + CustomScheduler + 'static>(
+        &mut self,
+        scheduler: T,
+    ) {
         let scheduler_id = scheduler.id();
         let name = scheduler.name().clone();
         self.sim.add_handler(name, rc!(refcell!(scheduler)));
@@ -265,12 +287,26 @@ impl ClusterSchedulingSimulation {
             host_generator_ctx.emit_now(HostAdded { host }, scheduler_id);
         }
 
+        let total_workload_hint = self
+            .workload_queue_watcher
+            .borrow()
+            .get_total_workload_hint();
+
         self.cluster.borrow_mut().set_scheduler(scheduler_id);
+        self.cluster
+            .borrow_mut()
+            .set_generator_queue_watcher_id(self.workload_queue_watcher.borrow().get_id());
+        if let Some(hint) = total_workload_hint {
+            self.cluster
+                .borrow_mut()
+                .set_notification_completed_step(hint / 100);
+        }
+
         self.proxy.borrow_mut().set_scheduler(scheduler_id);
 
-        let expected_workload_cnt = self.generate_workload();
+        self.workload_queue_watcher.borrow_mut().generate_workload();
 
-        self.cluster.borrow_mut().start(expected_workload_cnt);
+        self.cluster.borrow_mut().start();
 
         let t = Instant::now();
 
@@ -281,9 +317,27 @@ impl ClusterSchedulingSimulation {
 
         let elapsed = t.elapsed();
 
-        println!("SIMULATION FINISHED IN: {:?}", elapsed.as_secs_f64());
-
+        println!("SIMULATION FINISHED IN: {:?}s", elapsed.as_secs_f64());
         println!("SIMULATION FINISHED AT: {}", self.sim.time());
+        println!(
+            "Simulation speedup: {}",
+            self.sim.time() as f64 / elapsed.as_secs_f64()
+        );
+        println!(
+            "Processed executions: {}",
+            self.cluster.borrow().get_total_executions()
+        );
+        println!(
+            "Processed {} events: {}/s",
+            self.sim.event_count(),
+            (self.sim.event_count() as f64 / elapsed.as_secs_f64()) as u64
+        );
+        println!(
+            "Storage execution info max len: {}",
+            self.shared_info_storage
+                .borrow()
+                .get_executions_info_max_len()
+        );
     }
 
     pub fn run_with_scheduler<T: Scheduler + 'static>(&mut self, scheduler: T) {
@@ -293,84 +347,15 @@ impl ClusterSchedulingSimulation {
         self.run_with_custom_scheduler(invoker);
     }
 
-    fn generate_workload(&mut self) -> u64 {
-        let proxy_id = self.proxy.borrow().get_id();
-
-        let generator_ctx = self.sim.create_context("generator");
-
-        let mut next_execution_id = 0u64;
-        let mut next_collection_id = 0u64;
-
-        let mut used_execution_ids = HashSet::new();
-        let mut used_collection_ids = HashSet::new();
-
-        let mut total_workload_cnt: u64 = 0;
-        for workload_generator in self.workload_generators.iter() {
-            let mut workload = workload_generator.borrow_mut().get_workload(&generator_ctx, None);
-            total_workload_cnt += workload.len() as u64;
-            let mut collections = workload_generator.borrow_mut().get_collections(&generator_ctx);
-
-            for execution_request in workload.iter_mut() {
-                if let Some(id) = execution_request.id {
-                    if used_execution_ids.contains(&id) {
-                        panic!("Job id {} is used twice", id);
-                    }
-                    used_execution_ids.insert(id);
-                } else {
-                    while used_execution_ids.contains(&next_execution_id) {
-                        next_execution_id += 1;
-                    }
-                    execution_request.id = Some(next_execution_id);
-                    next_execution_id += 1;
-                }
-            }
-
-            for collection_event in collections.iter_mut() {
-                if let Some(id) = collection_event.id {
-                    if used_collection_ids.contains(&id) {
-                        panic!("Collection id {} is used twice", id);
-                    }
-                    used_collection_ids.insert(id);
-                } else {
-                    while used_collection_ids.contains(&next_collection_id) {
-                        next_collection_id += 1;
-                    }
-                    collection_event.id = Some(next_collection_id);
-                    next_collection_id += 1;
-                }
-            }
-
-            for execution_request in workload {
-                let time = execution_request.time;
-                generator_ctx.emit(
-                    ExecutionRequestEvent {
-                        request: execution_request,
-                    },
-                    proxy_id,
-                    time,
-                );
-            }
-            for collection_event in collections {
-                let time = collection_event.time;
-                generator_ctx.emit(
-                    CollectionRequestEvent {
-                        request: collection_event,
-                    },
-                    proxy_id,
-                    time,
-                );
-            }
-        }
-
-        total_workload_cnt
-    }
-
     fn register_key_getters(&self) {
         self.sim.register_key_getter_for::<CompFinished>(|c| c.id);
         self.sim.register_key_getter_for::<CompStarted>(|c| c.id);
-        self.sim.register_key_getter_for::<AllocationSuccess>(|c| c.id);
-        self.sim.register_key_getter_for::<AllocationFailed>(|c| c.id);
-        self.sim.register_key_getter_for::<DeallocationSuccess>(|c| c.id);
+        self.sim
+            .register_key_getter_for::<AllocationSuccess>(|c| c.id);
+        self.sim
+            .register_key_getter_for::<AllocationFailed>(|c| c.id);
+        self.sim
+            .register_key_getter_for::<DeallocationSuccess>(|c| c.id);
         self.sim
             .register_key_getter_for::<DataTransferCompleted>(|c| c.dt.id as u64);
     }

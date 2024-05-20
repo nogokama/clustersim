@@ -10,10 +10,17 @@ use std::io::Write;
 
 mod round_robin;
 
+#[cfg(feature = "dhat-heap")]
+#[global_allocator]
+static ALLOC: dhat::Alloc = dhat::Alloc;
+
 fn main() {
     Builder::from_default_env()
         .format(|buf, record| writeln!(buf, "{}", record.args()))
         .init();
+
+    #[cfg(feature = "dhat-heap")]
+    let _profiler = dhat::Profiler::new_heap();
 
     let mut sim = Simulation::new(42);
     let ctx = sim.create_context("test");

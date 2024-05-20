@@ -5,12 +5,15 @@ use std::{
 };
 
 use dslab_compute::multicore::{
-    AllocationFailed, AllocationSuccess, CompFinished, CompStarted, Compute, CoresDependency, DeallocationSuccess,
+    AllocationFailed, AllocationSuccess, CompFinished, CompStarted, Compute, CoresDependency,
+    DeallocationSuccess,
 };
 use dslab_core::{
-    cast, event::EventId, log_debug, log_error, log_info, Event, EventHandler, Id, Simulation, SimulationContext,
+    cast, event::EventId, log_debug, log_error, log_info, Event, EventHandler, Id, Simulation,
+    SimulationContext,
 };
 use futures::{select, FutureExt};
+use rustc_hash::FxHashMap;
 use serde::Serialize;
 use sugars::{rc, refcell};
 
@@ -55,9 +58,19 @@ pub struct ExecutionFinished {
     pub hosts: Vec<HostAvailableResources>,
 }
 
+#[derive(Clone, Serialize)]
+pub struct NewExecutionsRequired {
+    pub generator_id: usize,
+}
+
+#[derive(Clone, Serialize)]
+pub struct AddExpectedExecutionCount {
+    pub count: u64,
+}
+
 pub(crate) struct Cluster {
-    hosts: RefCell<HashMap<Id, Rc<ClusterHost>>>,
-    hosts_configs: RefCell<HashMap<Id, HostConfig>>,
+    hosts: RefCell<FxHashMap<Id, Rc<ClusterHost>>>,
+    hosts_configs: RefCell<FxHashMap<Id, HostConfig>>,
 
     enabled_hosts: RefCell<HashSet<Id>>,
 
@@ -65,6 +78,7 @@ pub(crate) struct Cluster {
     monitoring: Rc<RefCell<Monitoring>>,
 
     scheduler_id: Id,
+    generator_queue_watcher_id: Option<Id>,
     ctx: SimulationContext,
 
     process_cnt: RefCell<u64>,
@@ -72,7 +86,8 @@ pub(crate) struct Cluster {
     hosts_invoke_interval: Option<f64>,
     expected_execution_count: u64,
     total_execution_count: u64,
-    notification_count_values: VecDeque<u64>,
+
+    notification_completed_step: Option<u64>,
 }
 
 impl Cluster {
@@ -83,34 +98,44 @@ impl Cluster {
         hosts_invoke_interval: Option<f64>,
     ) -> Self {
         Cluster {
-            hosts: refcell!(HashMap::new()),
-            hosts_configs: refcell!(HashMap::new()),
+            hosts: refcell!(FxHashMap::default()),
+            hosts_configs: refcell!(FxHashMap::default()),
             enabled_hosts: refcell!(HashSet::new()),
             shared_info_storage,
             monitoring,
 
             scheduler_id: u32::MAX, // must be set later
+            generator_queue_watcher_id: None,
             ctx,
             process_cnt: refcell!(0),
 
             hosts_invoke_interval,
             expected_execution_count: 0,
             total_execution_count: 0,
-            notification_count_values: VecDeque::new(),
+            notification_completed_step: None,
         }
     }
 
-    pub fn start(&mut self, expected_execution_count: u64) {
-        self.expected_execution_count = expected_execution_count;
-
+    pub fn start(&mut self) {
         if self.hosts_invoke_interval.is_some() {
             self.ctx.emit_self_now(InvokingHosts {});
         }
+    }
 
-        for i in 0..100 {
-            self.notification_count_values
-                .push_back(i * expected_execution_count / 100);
-        }
+    pub fn set_notification_completed_step(&mut self, step: u64) {
+        self.notification_completed_step = Some(step);
+    }
+
+    pub fn get_total_executions(&self) -> u64 {
+        self.total_execution_count
+    }
+
+    pub fn add_expected_execution_count(&mut self, count: u64) {
+        self.expected_execution_count += count;
+    }
+
+    pub fn set_generator_queue_watcher_id(&mut self, id: Id) {
+        self.generator_queue_watcher_id = Some(id);
     }
 
     pub fn set_scheduler(&mut self, scheduler_id: Id) {
@@ -122,7 +147,9 @@ impl Cluster {
     }
 
     pub fn add_host(&self, host_config: HostConfig, host: Rc<ClusterHost>) {
-        self.hosts_configs.borrow_mut().insert(host.id(), host_config.clone());
+        self.hosts_configs
+            .borrow_mut()
+            .insert(host.id(), host_config.clone());
         self.hosts.borrow_mut().insert(host.id(), host);
         if let Some(trace_id) = host_config.trace_id {
             self.shared_info_storage
@@ -132,7 +159,11 @@ impl Cluster {
     }
 
     pub fn get_hosts(&self) -> Vec<HostConfig> {
-        self.hosts_configs.borrow().values().cloned().collect::<Vec<_>>()
+        self.hosts_configs
+            .borrow()
+            .values()
+            .cloned()
+            .collect::<Vec<_>>()
     }
 
     fn schedule_execution(&self, host_ids: Vec<Id>, execution_id: u64) {
@@ -141,12 +172,17 @@ impl Cluster {
             .map(|id| self.hosts.borrow().get(id).unwrap().clone())
             .collect::<Vec<_>>();
 
-        let request = self.shared_info_storage.borrow().get_execution_request(execution_id);
+        let shared_info_storage = self.shared_info_storage.borrow_mut();
+        let request = shared_info_storage.get_execution_request(execution_id);
 
         self.ctx.spawn(self.track_execution_process(hosts, request));
     }
 
-    async fn track_execution_process(&self, hosts: Vec<Rc<ClusterHost>>, request: ExecutionRequest) {
+    async fn track_execution_process(
+        &self,
+        hosts: Vec<Rc<ClusterHost>>,
+        request: ExecutionRequest,
+    ) {
         let processes = self.allocate_processes(&hosts, &request).await;
 
         let hosts_ids = processes.iter().map(|p| p.host.id()).collect::<Vec<_>>();
@@ -220,6 +256,10 @@ impl Cluster {
             },
             self.scheduler_id,
         );
+
+        self.shared_info_storage
+            .borrow_mut()
+            .remove_execution_request(request.id.unwrap());
     }
 
     async fn allocate_processes(
@@ -244,7 +284,9 @@ impl Cluster {
 
             let process_id = *self.process_cnt.borrow();
 
-            self.shared_info_storage.borrow_mut().set_host_id(process_id, host.id());
+            self.shared_info_storage
+                .borrow_mut()
+                .set_host_id(process_id, host.id());
 
             *self.process_cnt.borrow_mut() += 1;
 
@@ -265,59 +307,99 @@ impl Cluster {
                 .compute
                 .borrow_mut()
                 .deallocate_managed(process.compute_allocation_id, self.ctx.id());
-            self.ctx.recv_event_by_key::<DeallocationSuccess>(deallocation_id).await;
+            self.ctx
+                .recv_event_by_key::<DeallocationSuccess>(deallocation_id)
+                .await;
 
-            self.shared_info_storage.borrow_mut().remove_process(process.id);
+            self.shared_info_storage
+                .borrow_mut()
+                .remove_process(process.id);
         }
     }
 
     fn cancel_execution(&self, task_id: u64) {
         log_error!(self.ctx, "cancel execution: {} not implemented", task_id)
     }
+
+    fn on_invoking_hosts(&self) -> bool {
+        if self.total_execution_count == self.expected_execution_count {
+            return true;
+        }
+        self.hosts.borrow().iter().for_each(|(id, host)| {
+            self.ctx.emit_now(
+                HostInvoked {
+                    id: *id,
+                    resources: ResourcesPack::new_cpu_memory(
+                        host.compute.borrow().cores_available(),
+                        host.compute.borrow().memory_available(),
+                    ),
+                },
+                self.scheduler_id,
+            );
+        });
+        false
+    }
 }
 
 impl EventHandler for Cluster {
     fn on(&mut self, event: Event) {
         cast!(match event.data {
-            ScheduleExecution { execution_id, host_ids } => {
-                log_debug!(self.ctx, "schedule job: {} on hosts: {:?}", execution_id, host_ids);
+            ScheduleExecution {
+                execution_id,
+                host_ids,
+            } => {
+                log_debug!(
+                    self.ctx,
+                    "schedule job: {} on hosts: {:?}",
+                    execution_id,
+                    host_ids
+                );
                 self.schedule_execution(host_ids, execution_id);
                 self.total_execution_count += 1;
-                if !self.notification_count_values.is_empty()
-                    && self.total_execution_count >= self.notification_count_values[0]
-                {
-                    log_info!(
-                        self.ctx,
-                        "completed {}% of executions",
-                        self.notification_count_values.pop_front().unwrap() as f64
-                            / self.expected_execution_count as f64
-                            * 100.0
-                    );
+
+                if let Some(step) = self.notification_completed_step {
+                    if self.total_execution_count % step == 0 {
+                        log_info!(
+                            self.ctx,
+                            "completed {}% of total executions. Max queue size {}",
+                            self.total_execution_count / step,
+                            self.shared_info_storage
+                                .borrow()
+                                .get_executions_info_max_len(),
+                        );
+                        // println!(
+                        //     "completed {}% of total executions",
+                        //     self.total_execution_count / step
+                        // );
+                    }
                 }
             }
             CancelExecution { execution_id } => {
                 self.cancel_execution(execution_id);
             }
             InvokingHosts {} => {
-                if self.total_execution_count == self.expected_execution_count {
+                if self.on_invoking_hosts() {
                     return;
                 }
-                self.hosts.borrow().iter().for_each(|(id, host)| {
-                    self.ctx.emit_now(
-                        HostInvoked {
-                            id: *id,
-                            resources: ResourcesPack::new_cpu_memory(
-                                host.compute.borrow().cores_available(),
-                                host.compute.borrow().memory_available(),
-                            ),
-                        },
-                        self.scheduler_id,
+
+                if let Some(step) = self.notification_completed_step {
+                    log_info!(
+                        self.ctx,
+                        "invoking hosts: completed {}% of total executions. Max queue size {}",
+                        self.total_execution_count / step,
+                        self.shared_info_storage
+                            .borrow()
+                            .get_executions_info_max_len(),
                     );
-                });
+                }
 
                 if let Some(delay) = self.hosts_invoke_interval {
                     self.ctx.emit_self(InvokingHosts {}, delay);
                 }
+            }
+            AddExpectedExecutionCount { count } => {
+                self.add_expected_execution_count(count);
+                self.on_invoking_hosts();
             }
         });
     }

@@ -1,6 +1,7 @@
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 use dslab_core::{cast, log_debug, EventHandler, Id, SimulationContext};
+use rustc_hash::FxHashMap;
 use serde::Serialize;
 
 use crate::{
@@ -11,7 +12,6 @@ use crate::{
 };
 
 pub struct Proxy {
-    jobs_scheduled_time: HashMap<u64, f64>,
     scheduler_id: Id,
     cluster_id: Id,
     shared_info_storage: Rc<RefCell<SharedInfoStorage>>,
@@ -29,7 +29,6 @@ impl Proxy {
     ) -> Proxy {
         Proxy {
             scheduler_id: u32::MAX,
-            jobs_scheduled_time: HashMap::new(),
             cluster_id,
             shared_info_storage,
             monitoring,
@@ -50,20 +49,12 @@ impl EventHandler for Proxy {
     fn on(&mut self, event: dslab_core::Event) {
         cast!(match event.data {
             ExecutionRequestEvent { request } => {
-                self.jobs_scheduled_time.insert(request.id.unwrap(), self.ctx.time());
+                let mut monitoring = self.monitoring.borrow_mut();
+                let shared_info_storage = self.shared_info_storage.borrow();
 
-                self.shared_info_storage
-                    .borrow_mut()
-                    .set_execution_request(request.id.unwrap(), request.clone());
+                let user = shared_info_storage.get_execution_user(request.id.unwrap());
 
-                let user = self
-                    .shared_info_storage
-                    .borrow()
-                    .get_execution_user(request.id.unwrap());
-
-                self.monitoring
-                    .borrow_mut()
-                    .add_scheduler_queue_size(event.time, 1, user);
+                monitoring.add_scheduler_queue_size(event.time, 1, user);
 
                 self.ctx.emit_now(ExecutionRequestEvent { request }, self.scheduler_id);
             }
