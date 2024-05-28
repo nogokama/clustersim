@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["ProfileDefinition"],"fn":["from_yaml","parse_combinator"],"struct":["ProfileBuilder"],"type":["ConstructorFn"]};

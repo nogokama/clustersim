@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["CollectionType","EventType","LatencySensitivity"],"mod":["machine_event"],"struct":["CollectionEvent","InstanceEvent","MachineEvent","Resources"]};

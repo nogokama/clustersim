@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["WorkloadType"],"fn":["workload_resolver"]};
