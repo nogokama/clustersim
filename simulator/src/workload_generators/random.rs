@@ -12,7 +12,7 @@ use super::{
 };
 
 #[derive(Serialize, Deserialize)]
-struct Options {
+pub struct Options {
     execution_count: u32,
     cpu_min: u32,
     cpu_max: u32,

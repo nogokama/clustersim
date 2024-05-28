@@ -8,7 +8,6 @@ scheduler_info = pd.read_csv('scheduler_info.txt')
 fair_share_info = pd.read_csv('fair_share.txt')
 
 
-
 # Get unique host names
 unique_host_names = np.unique(data['name'])
 

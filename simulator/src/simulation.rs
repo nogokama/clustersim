@@ -160,7 +160,7 @@ impl ClusterSchedulingSimulation {
         network
     }
 
-    pub fn build_cluster(
+    fn build_cluster(
         &mut self,
         hosts_groups: Vec<GroupHostConfig>,
         hosts: Vec<HostConfig>,
@@ -193,7 +193,7 @@ impl ClusterSchedulingSimulation {
         }
     }
 
-    pub fn build_host(
+    fn build_host(
         &mut self,
         mut host_config: HostConfig,
         network_config: Option<&NetworkConfig>,

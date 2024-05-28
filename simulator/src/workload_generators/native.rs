@@ -28,7 +28,7 @@ pub struct NativeExecutionDefinition {
 }
 
 #[derive(Deserialize)]
-struct NativeWorkloadGeneratorOptions {
+pub struct Options {
     path: String,
     profile_path: Option<String>,
     collections_path: Option<String>,
@@ -37,7 +37,7 @@ struct NativeWorkloadGeneratorOptions {
 pub struct NativeWorkloadGenerator {
     workload: Vec<NativeExecutionDefinition>,
     profile_builder: ProfileBuilder,
-    options: NativeWorkloadGeneratorOptions,
+    options: Options,
 }
 
 impl NativeWorkloadGenerator {
@@ -45,8 +45,7 @@ impl NativeWorkloadGenerator {
         options: &serde_yaml::Value,
         profile_builder: ProfileBuilder,
     ) -> Self {
-        let options: NativeWorkloadGeneratorOptions =
-            serde_yaml::from_value(options.clone()).unwrap();
+        let options: Options = serde_yaml::from_value(options.clone()).unwrap();
         let jobs: Vec<NativeExecutionDefinition> = serde_yaml::from_str(
             &std::fs::read_to_string(&options.path)
                 .unwrap_or_else(|_| panic!("Can't read file {}", options.path)),

@@ -9,7 +9,7 @@ use crate::{execution_profiles::default::Idle, workload_generators::events::Reso
 use super::{events::ExecutionRequest, generator::WorkloadGenerator};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-struct Options {
+pub struct Options {
     pub batch_instance: String,
     pub resource_multiplier: f64,
     pub full_limit: Option<u64>,
@@ -25,8 +25,6 @@ impl AlibabaTraceReader {
     pub fn from_options(options: &serde_yaml::Value) -> Self {
         let options: Options = serde_yaml::from_value(options.clone()).unwrap();
         let reader = Reader::from_path(&options.batch_instance).unwrap();
-
-        // reader.set_headers(csv::StringRecord::from(AlibabaTraceReader::get_headers().as_ref()));
 
         Self {
             options,
