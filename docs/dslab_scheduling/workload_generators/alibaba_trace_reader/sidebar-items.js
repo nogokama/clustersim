@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["AlibabaTraceReader"]};
+window.SIDEBAR_ITEMS = {"struct":["AlibabaTraceReader","Options"]};

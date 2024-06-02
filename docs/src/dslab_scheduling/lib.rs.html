@@ -15,6 +15,14 @@
 <a href="#13" id="13">13</a>
 <a href="#14" id="14">14</a>
 <a href="#15" id="15">15</a>
+<a href="#16" id="16">16</a>
+<a href="#17" id="17">17</a>
+<a href="#18" id="18">18</a>
+<a href="#19" id="19">19</a>
+<a href="#20" id="20">20</a>
+<a href="#21" id="21">21</a>
+<a href="#22" id="22">22</a>
+<a href="#23" id="23">23</a>
 </pre></div><pre class="rust"><code><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">"../readme.md"</span>)]
 
 </span><span class="kw">pub mod </span>cluster;
@@ -27,7 +35,15 @@
 <span class="kw">pub mod </span>proxy;
 <span class="kw">pub mod </span>scheduler;
 <span class="kw">pub mod </span>simulation;
-<span class="kw">pub mod </span>storage;
 <span class="kw">pub mod </span>workload_generators;
-<span class="kw">pub mod </span>workload_queue_watcher;
+
+<span class="kw">mod </span>storage;
+<span class="kw">mod </span>workload_queue_watcher;
+
+<span class="kw">pub use </span>execution_profiles::profile::ExecutionProfile;
+<span class="kw">pub use </span>host::process::HostProcessInstance;
+<span class="kw">pub use </span>scheduler::Scheduler;
+<span class="kw">pub use </span>simulation::ClusterSchedulingSimulation;
+<span class="kw">pub use </span>workload_generators::events::{ExecutionRequest, ResourcesPack};
+<span class="kw">pub use </span>workload_generators::generator::WorkloadGenerator;
 </code></pre></div></section></main></body></html>

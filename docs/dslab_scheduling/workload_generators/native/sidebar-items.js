@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["NativeExecutionDefinition","NativeWorkloadGenerator"]};
+window.SIDEBAR_ITEMS = {"struct":["NativeExecutionDefinition","NativeWorkloadGenerator","Options"]};

@@ -112,7 +112,6 @@
 <a href="#110" id="110">110</a>
 <a href="#111" id="111">111</a>
 <a href="#112" id="112">112</a>
-<a href="#113" id="113">113</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>dslab_core::SimulationContext;
 <span class="kw">use </span>serde::{Deserialize, Serialize};
 
@@ -143,7 +142,7 @@
 }
 
 <span class="attr">#[derive(Deserialize)]
-</span><span class="kw">struct </span>NativeWorkloadGeneratorOptions {
+</span><span class="kw">pub struct </span>Options {
     path: String,
     profile_path: <span class="prelude-ty">Option</span>&lt;String&gt;,
     collections_path: <span class="prelude-ty">Option</span>&lt;String&gt;,
@@ -152,7 +151,7 @@
 <span class="kw">pub struct </span>NativeWorkloadGenerator {
     workload: Vec&lt;NativeExecutionDefinition&gt;,
     profile_builder: ProfileBuilder,
-    options: NativeWorkloadGeneratorOptions,
+    options: Options,
 }
 
 <span class="kw">impl </span>NativeWorkloadGenerator {
@@ -160,8 +159,7 @@
         options: <span class="kw-2">&amp;</span>serde_yaml::Value,
         profile_builder: ProfileBuilder,
     ) -&gt; <span class="self">Self </span>{
-        <span class="kw">let </span>options: NativeWorkloadGeneratorOptions =
-            serde_yaml::from_value(options.clone()).unwrap();
+        <span class="kw">let </span>options: Options = serde_yaml::from_value(options.clone()).unwrap();
         <span class="kw">let </span>jobs: Vec&lt;NativeExecutionDefinition&gt; = serde_yaml::from_str(
             <span class="kw-2">&amp;</span>std::fs::read_to_string(<span class="kw-2">&amp;</span>options.path)
                 .unwrap_or_else(|<span class="kw">_</span>| <span class="macro">panic!</span>(<span class="string">"Can't read file {}"</span>, options.path)),

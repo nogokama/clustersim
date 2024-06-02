@@ -553,7 +553,7 @@
         network
     }
 
-    <span class="kw">pub fn </span>build_cluster(
+    <span class="kw">fn </span>build_cluster(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         hosts_groups: Vec&lt;GroupHostConfig&gt;,
         hosts: Vec&lt;HostConfig&gt;,
@@ -586,7 +586,7 @@
         }
     }
 
-    <span class="kw">pub fn </span>build_host(
+    <span class="kw">fn </span>build_host(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         <span class="kw-2">mut </span>host_config: HostConfig,
         network_config: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>NetworkConfig&gt;,

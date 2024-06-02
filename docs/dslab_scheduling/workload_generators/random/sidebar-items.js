@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["RandomWorkloadGenerator"]};
+window.SIDEBAR_ITEMS = {"struct":["Options","RandomWorkloadGenerator"]};
