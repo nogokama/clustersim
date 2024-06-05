@@ -1,5 +1,6 @@
 use std::{cell::RefCell, rc::Rc, time::Instant, vec};
 
+use rustc_hash::FxHashMap;
 use serde::de::DeserializeOwned;
 use sugars::{boxed, rc, refcell};
 
@@ -8,7 +9,9 @@ use dslab_compute::multicore::{
 };
 use dslab_core::{EventHandler, Id, Simulation};
 use dslab_network::{
-    models::{ConstantBandwidthNetworkModel, SharedBandwidthNetworkModel},
+    models::{
+        ConstantBandwidthNetworkModel, SharedBandwidthNetworkModel, TopologyAwareNetworkModel,
+    },
     DataTransferCompleted, Network, NetworkModel,
 };
 use dslab_storage::disk::DiskBuilder;
@@ -23,6 +26,7 @@ use crate::{
     },
     host::cluster_host::ClusterHost,
     monitoring::Monitoring,
+    networks::{fat_tree::make_fat_tree_topology, resolver::NetworkType},
     proxy::Proxy,
     scheduler::{CustomScheduler, Scheduler, SchedulerInvoker},
     storage::SharedInfoStorage,
@@ -141,23 +145,56 @@ impl ClusterSchedulingSimulation {
     }
 
     fn build_network(&mut self, network_config: &NetworkConfig) -> Rc<RefCell<Network>> {
-        let network_model: Box<dyn NetworkModel> = if network_config.shared.unwrap_or(false) {
-            boxed!(SharedBandwidthNetworkModel::new(
-                network_config.bandwidth,
-                network_config.latency
-            ))
-        } else {
-            boxed!(ConstantBandwidthNetworkModel::new(
-                network_config.bandwidth,
-                network_config.latency
-            ))
+        let network_ctx = self.sim.create_context("network");
+        let network_model: Box<dyn NetworkModel> = match network_config.r#type {
+            NetworkType::Constant => {
+                boxed!(ConstantBandwidthNetworkModel::new(
+                    network_config.global.as_ref().unwrap().bandwidth,
+                    network_config.global.as_ref().unwrap().latency,
+                ))
+            }
+            NetworkType::Shared => {
+                boxed!(SharedBandwidthNetworkModel::new(
+                    network_config.global.as_ref().unwrap().bandwidth,
+                    network_config.global.as_ref().unwrap().latency,
+                ))
+            }
+            NetworkType::FatTree => {
+                boxed!(TopologyAwareNetworkModel::new())
+            }
         };
 
-        let network_ctx = self.sim.create_context("network");
         let network = rc!(refcell!(Network::new(network_model, network_ctx)));
+
         self.sim.add_handler("network", network.clone());
 
         network
+    }
+
+    fn init_network_topology(
+        &mut self,
+        network: Rc<RefCell<Network>>,
+        network_config: &NetworkConfig,
+        host_names: Vec<String>,
+    ) {
+        let mut switches = FxHashMap::default();
+        let l1_switch_count = network_config.l1_switch_count.unwrap();
+
+        for (i, host) in host_names.iter().enumerate() {
+            switches.insert(host.clone(), i % l1_switch_count);
+        }
+
+        make_fat_tree_topology(
+            &mut network.borrow_mut(),
+            network_config.l2_switch_count.unwrap(),
+            network_config.l1_switch_count.unwrap(),
+            switches,
+            network_config.uplink.as_ref().unwrap(),
+            network_config.downlink.as_ref().unwrap(),
+            network_config.switch.as_ref().unwrap(),
+        );
+
+        network.borrow_mut().init_topology();
     }
 
     fn build_cluster(
@@ -171,25 +208,33 @@ impl ClusterSchedulingSimulation {
             network = Some(self.build_network(network_config.as_ref().unwrap()));
         }
 
+        let mut host_names = vec![];
+
         for host_group in hosts_groups {
             if host_group.count.unwrap_or(1) == 1 {
-                self.build_host(
+                host_names.push(self.build_host(
                     HostConfig::from_group_config(&host_group, None),
                     network_config.as_ref(),
                     network.clone(),
-                );
+                ));
             } else {
                 for i in 0..host_group.count.unwrap() {
-                    self.build_host(
+                    host_names.push(self.build_host(
                         HostConfig::from_group_config(&host_group, Some(i)),
                         network_config.as_ref(),
                         network.clone(),
-                    );
+                    ));
                 }
             }
         }
         for host_config in hosts {
-            self.build_host(host_config, network_config.as_ref(), network.clone());
+            host_names.push(self.build_host(host_config, network_config.as_ref(), network.clone()));
+        }
+
+        if let Some(network_config) = network_config.as_ref() {
+            if network_config.r#type == NetworkType::FatTree {
+                self.init_network_topology(network.unwrap(), network_config, host_names);
+            }
         }
     }
 
@@ -198,7 +243,7 @@ impl ClusterSchedulingSimulation {
         mut host_config: HostConfig,
         network_config: Option<&NetworkConfig>,
         network: Option<Rc<RefCell<Network>>>,
-    ) {
+    ) -> String {
         let cluster = self.cluster.borrow();
 
         let host_name = format!("host-{}", host_config.name);
@@ -223,10 +268,10 @@ impl ClusterSchedulingSimulation {
                 boxed!(SharedBandwidthNetworkModel::new(
                     host_config
                         .local_newtork_bw
-                        .unwrap_or(network_config.unwrap().local_bandwidth),
+                        .unwrap_or(network_config.unwrap().local.bandwidth),
                     host_config
                         .local_newtork_latency
-                        .unwrap_or(network_config.unwrap().local_latency),
+                        .unwrap_or(network_config.unwrap().local.latency),
                 )),
             );
             network.borrow_mut().set_location(host_ctx.id(), &host_name);
@@ -265,6 +310,8 @@ impl ClusterSchedulingSimulation {
             .add_host(host_name.clone(), &host_config);
 
         cluster.add_host(host_config, host);
+
+        host_name
     }
 
     pub fn register_profile_with_constructor(&mut self, name: String, constructor: ConstructorFn) {

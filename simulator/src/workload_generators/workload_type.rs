@@ -11,10 +11,10 @@ use crate::{
 use super::{
     alibaba_trace_reader::AlibabaTraceReader, generator::WorkloadGenerator,
     google_trace_reader::GoogleTraceWorkloadGenerator, native::NativeWorkloadGenerator,
-    random::RandomWorkloadGenerator,
+    random::RandomWorkloadGenerator, swf::SWFTraceReader,
 };
 
-/// Holds supported VM dataset types.
+/// Holds supported cluster dataset types.
 #[derive(Debug, PartialEq, Serialize, Deserialize, Clone)]
 pub enum WorkloadType {
     Random,
@@ -66,7 +66,11 @@ pub fn workload_resolver(
                 .as_ref()
                 .expect("Alibaba trace workload options are required"),
         ))),
-        WorkloadType::SWF => unimplemented!(),
+        WorkloadType::SWF => Box::new(RefCell::new(SWFTraceReader::from_options(
+            options
+                .as_ref()
+                .expect("SWF trace workload options are required"),
+        ))),
         WorkloadType::Native => Box::new(RefCell::new(
             NativeWorkloadGenerator::from_options_and_builder(
                 options

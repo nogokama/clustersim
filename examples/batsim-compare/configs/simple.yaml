@@ -1,0 +1,48 @@
+---
+workload:
+  - type: Native
+    options: 
+      path: workloads/large_workload.yaml
+      profile_path: profiles/profiles.yaml
+
+hosts: 
+  - count: 5
+    cpus: 20
+    cpu_speed: 1
+    memory: 300
+    name_prefix: m
+  - count: 5
+    cpus: 100
+    cpu_speed: 1
+    memory: 50
+    name_prefix: c
+  
+
+# network: 
+#   type: shared 
+#   local: 
+#     latency: 0.
+#     bandwidth: 1000
+#   global: 
+#     latency: 0.2
+#     bandwidth: 100
+
+network: 
+  type: fat-tree 
+  local: 
+    latency: 0.
+    bandwidth: 1000
+  switch: 
+    latency: 0.
+    bandwidth: 1e5 
+  uplink: 
+    latency: 1e-4
+    bandwidth: 1e2
+  downlink:
+    latency: 1e-4
+    bandwidth: 1e2
+  l1_switch_count: 3
+  l2_switch_count: 3
+
+monitoring: 
+  output_dir: output/first

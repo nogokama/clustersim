@@ -1,0 +1,6 @@
+- submit_time: 10.12
+  resources:
+    nodes_count: 5
+    cpu_per_node: 2
+    memory_per_node: 4
+  profile: all

@@ -1,0 +1,17 @@
+---
+net:
+  type: communication-homogenous
+  args:
+    size: 1000
+
+compute:
+  type: compute-homogenous
+  args:
+    compute_work: 1000
+
+all: 
+  type: parallel 
+  args: 
+    profiles: 
+      - compute 
+      - net 

@@ -32,7 +32,7 @@ impl MonitoringState {
     }
 }
 
-#[derive(Clone, Serialize, Debug)]
+#[derive(Clone, Serialize, Debug, PartialEq)]
 pub struct ResourcePoint {
     pub value: f64,
     pub time: f64,

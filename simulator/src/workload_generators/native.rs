@@ -37,6 +37,8 @@ pub struct Options {
 pub struct NativeWorkloadGenerator {
     workload: Vec<NativeExecutionDefinition>,
     profile_builder: ProfileBuilder,
+    profiles_parsed: bool,
+    generated_workload: bool,
     options: Options,
 }
 
@@ -55,6 +57,8 @@ impl NativeWorkloadGenerator {
         NativeWorkloadGenerator {
             workload: jobs,
             profile_builder,
+            profiles_parsed: false,
+            generated_workload: false,
             options,
         }
     }
@@ -67,31 +71,40 @@ impl WorkloadGenerator for NativeWorkloadGenerator {
         _limit: Option<u64>,
     ) -> Vec<ExecutionRequest> {
         if let Some(profile_path) = &self.options.profile_path {
-            let profiles = serde_yaml::from_str(
-                &std::fs::read_to_string(profile_path)
-                    .unwrap_or_else(|e| panic!("Can't read file {}: {}", profile_path, e)),
-            )
-            .unwrap_or_else(|e| panic!("Can't parse profiles from file {}: {}", profile_path, e));
+            if !self.profiles_parsed {
+                let profiles = serde_yaml::from_str(
+                    &std::fs::read_to_string(profile_path)
+                        .unwrap_or_else(|e| panic!("Can't read file {}: {}", profile_path, e)),
+                )
+                .unwrap_or_else(|e| {
+                    panic!("Can't parse profiles from file {}: {}", profile_path, e)
+                });
 
-            self.profile_builder.parse_profiles(&profiles)
+                self.profile_builder.parse_profiles(&profiles);
+                self.profiles_parsed = true;
+            }
         }
 
-        let workload = self
-            .workload
-            .iter()
-            .map(|job| ExecutionRequest {
-                id: job.id,
-                name: job.name.clone(),
-                time: job.submit_time,
-                schedule_after: None,
-                collection_id: None,
-                execution_index: None,
-                resources: job.resources.clone(),
-                profile: self.profile_builder.build(job.profile.clone()),
-                wall_time_limit: job.wall_time_limit,
-                priority: job.priority,
-            })
-            .collect::<Vec<_>>();
+        let workload = if !self.generated_workload {
+            self.generated_workload = true;
+            self.workload
+                .iter()
+                .map(|job| ExecutionRequest {
+                    id: job.id,
+                    name: job.name.clone(),
+                    time: job.submit_time,
+                    schedule_after: None,
+                    collection_id: None,
+                    execution_index: None,
+                    resources: job.resources.clone(),
+                    profile: self.profile_builder.build(job.profile.clone()),
+                    wall_time_limit: job.wall_time_limit,
+                    priority: job.priority,
+                })
+                .collect::<Vec<_>>()
+        } else {
+            vec![]
+        };
 
         workload
     }

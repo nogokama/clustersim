@@ -192,7 +192,7 @@ impl WorkloadQueueWatcher {
             let time = execution_request.time;
             self.generators_last_time[generator_id] = time;
 
-            self.ctx.emit(
+            self.ctx.emit_ordered(
                 ExecutionRequestEvent {
                     request: execution_request,
                 },

@@ -2,6 +2,8 @@ use serde::{Deserialize, Serialize};
 
 use dslab_core::Id;
 
+use crate::networks::resolver::NetworkType;
+
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct HostConfig {
     pub id: Id,
@@ -106,12 +108,21 @@ pub struct GroupHostConfig {
 }
 
 #[derive(Debug, PartialEq, Serialize, Deserialize, Clone)]
-pub struct NetworkConfig {
-    pub shared: Option<bool>,
-    pub local_latency: f64,
-    pub local_bandwidth: f64,
-    pub latency: f64,
+pub struct NetworkLinkConfig {
     pub bandwidth: f64,
+    pub latency: f64,
+}
+
+#[derive(Debug, PartialEq, Serialize, Deserialize, Clone)]
+pub struct NetworkConfig {
+    pub r#type: NetworkType,
+    pub local: NetworkLinkConfig,
+    pub global: Option<NetworkLinkConfig>,
+    pub uplink: Option<NetworkLinkConfig>,
+    pub downlink: Option<NetworkLinkConfig>,
+    pub switch: Option<NetworkLinkConfig>,
+    pub l1_switch_count: Option<usize>,
+    pub l2_switch_count: Option<usize>,
 }
 
 #[derive(Default, Debug, PartialEq, Serialize, Deserialize, Clone)]
