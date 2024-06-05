@@ -184,9 +184,22 @@
 <a href="#182" id="182">182</a>
 <a href="#183" id="183">183</a>
 <a href="#184" id="184">184</a>
+<a href="#185" id="185">185</a>
+<a href="#186" id="186">186</a>
+<a href="#187" id="187">187</a>
+<a href="#188" id="188">188</a>
+<a href="#189" id="189">189</a>
+<a href="#190" id="190">190</a>
+<a href="#191" id="191">191</a>
+<a href="#192" id="192">192</a>
+<a href="#193" id="193">193</a>
+<a href="#194" id="194">194</a>
+<a href="#195" id="195">195</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>serde::{Deserialize, Serialize};
 
 <span class="kw">use </span>dslab_core::Id;
+
+<span class="kw">use </span><span class="kw">crate</span>::networks::resolver::NetworkType;
 
 <span class="attr">#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 </span><span class="kw">pub struct </span>HostConfig {
@@ -292,12 +305,21 @@
 }
 
 <span class="attr">#[derive(Debug, PartialEq, Serialize, Deserialize, Clone)]
-</span><span class="kw">pub struct </span>NetworkConfig {
-    <span class="kw">pub </span>shared: <span class="prelude-ty">Option</span>&lt;bool&gt;,
-    <span class="kw">pub </span>local_latency: f64,
-    <span class="kw">pub </span>local_bandwidth: f64,
-    <span class="kw">pub </span>latency: f64,
+</span><span class="kw">pub struct </span>NetworkLinkConfig {
     <span class="kw">pub </span>bandwidth: f64,
+    <span class="kw">pub </span>latency: f64,
+}
+
+<span class="attr">#[derive(Debug, PartialEq, Serialize, Deserialize, Clone)]
+</span><span class="kw">pub struct </span>NetworkConfig {
+    <span class="kw">pub </span>r#type: NetworkType,
+    <span class="kw">pub </span>local: NetworkLinkConfig,
+    <span class="kw">pub </span>global: <span class="prelude-ty">Option</span>&lt;NetworkLinkConfig&gt;,
+    <span class="kw">pub </span>uplink: <span class="prelude-ty">Option</span>&lt;NetworkLinkConfig&gt;,
+    <span class="kw">pub </span>downlink: <span class="prelude-ty">Option</span>&lt;NetworkLinkConfig&gt;,
+    <span class="kw">pub </span>switch: <span class="prelude-ty">Option</span>&lt;NetworkLinkConfig&gt;,
+    <span class="kw">pub </span>l1_switch_count: <span class="prelude-ty">Option</span>&lt;usize&gt;,
+    <span class="kw">pub </span>l2_switch_count: <span class="prelude-ty">Option</span>&lt;usize&gt;,
 }
 
 <span class="attr">#[derive(Default, Debug, PartialEq, Serialize, Deserialize, Clone)]

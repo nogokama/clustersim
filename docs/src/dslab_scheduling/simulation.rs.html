@@ -391,8 +391,56 @@
 <a href="#389" id="389">389</a>
 <a href="#390" id="390">390</a>
 <a href="#391" id="391">391</a>
+<a href="#392" id="392">392</a>
+<a href="#393" id="393">393</a>
+<a href="#394" id="394">394</a>
+<a href="#395" id="395">395</a>
+<a href="#396" id="396">396</a>
+<a href="#397" id="397">397</a>
+<a href="#398" id="398">398</a>
+<a href="#399" id="399">399</a>
+<a href="#400" id="400">400</a>
+<a href="#401" id="401">401</a>
+<a href="#402" id="402">402</a>
+<a href="#403" id="403">403</a>
+<a href="#404" id="404">404</a>
+<a href="#405" id="405">405</a>
+<a href="#406" id="406">406</a>
+<a href="#407" id="407">407</a>
+<a href="#408" id="408">408</a>
+<a href="#409" id="409">409</a>
+<a href="#410" id="410">410</a>
+<a href="#411" id="411">411</a>
+<a href="#412" id="412">412</a>
+<a href="#413" id="413">413</a>
+<a href="#414" id="414">414</a>
+<a href="#415" id="415">415</a>
+<a href="#416" id="416">416</a>
+<a href="#417" id="417">417</a>
+<a href="#418" id="418">418</a>
+<a href="#419" id="419">419</a>
+<a href="#420" id="420">420</a>
+<a href="#421" id="421">421</a>
+<a href="#422" id="422">422</a>
+<a href="#423" id="423">423</a>
+<a href="#424" id="424">424</a>
+<a href="#425" id="425">425</a>
+<a href="#426" id="426">426</a>
+<a href="#427" id="427">427</a>
+<a href="#428" id="428">428</a>
+<a href="#429" id="429">429</a>
+<a href="#430" id="430">430</a>
+<a href="#431" id="431">431</a>
+<a href="#432" id="432">432</a>
+<a href="#433" id="433">433</a>
+<a href="#434" id="434">434</a>
+<a href="#435" id="435">435</a>
+<a href="#436" id="436">436</a>
+<a href="#437" id="437">437</a>
+<a href="#438" id="438">438</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::{cell::RefCell, rc::Rc, time::Instant, vec};
 
+<span class="kw">use </span>rustc_hash::FxHashMap;
 <span class="kw">use </span>serde::de::DeserializeOwned;
 <span class="kw">use </span>sugars::{boxed, rc, refcell};
 
@@ -401,7 +449,9 @@
 };
 <span class="kw">use </span>dslab_core::{EventHandler, Id, Simulation};
 <span class="kw">use </span>dslab_network::{
-    models::{ConstantBandwidthNetworkModel, SharedBandwidthNetworkModel},
+    models::{
+        ConstantBandwidthNetworkModel, SharedBandwidthNetworkModel, TopologyAwareNetworkModel,
+    },
     DataTransferCompleted, Network, NetworkModel,
 };
 <span class="kw">use </span>dslab_storage::disk::DiskBuilder;
@@ -416,6 +466,7 @@
     },
     host::cluster_host::ClusterHost,
     monitoring::Monitoring,
+    networks::{fat_tree::make_fat_tree_topology, resolver::NetworkType},
     proxy::Proxy,
     scheduler::{CustomScheduler, Scheduler, SchedulerInvoker},
     storage::SharedInfoStorage,
@@ -534,23 +585,56 @@
     }
 
     <span class="kw">fn </span>build_network(<span class="kw-2">&amp;mut </span><span class="self">self</span>, network_config: <span class="kw-2">&amp;</span>NetworkConfig) -&gt; Rc&lt;RefCell&lt;Network&gt;&gt; {
-        <span class="kw">let </span>network_model: Box&lt;<span class="kw">dyn </span>NetworkModel&gt; = <span class="kw">if </span>network_config.shared.unwrap_or(<span class="bool-val">false</span>) {
-            <span class="macro">boxed!</span>(SharedBandwidthNetworkModel::new(
-                network_config.bandwidth,
-                network_config.latency
-            ))
-        } <span class="kw">else </span>{
-            <span class="macro">boxed!</span>(ConstantBandwidthNetworkModel::new(
-                network_config.bandwidth,
-                network_config.latency
-            ))
+        <span class="kw">let </span>network_ctx = <span class="self">self</span>.sim.create_context(<span class="string">"network"</span>);
+        <span class="kw">let </span>network_model: Box&lt;<span class="kw">dyn </span>NetworkModel&gt; = <span class="kw">match </span>network_config.r#type {
+            NetworkType::Constant =&gt; {
+                <span class="macro">boxed!</span>(ConstantBandwidthNetworkModel::new(
+                    network_config.global.as_ref().unwrap().bandwidth,
+                    network_config.global.as_ref().unwrap().latency,
+                ))
+            }
+            NetworkType::Shared =&gt; {
+                <span class="macro">boxed!</span>(SharedBandwidthNetworkModel::new(
+                    network_config.global.as_ref().unwrap().bandwidth,
+                    network_config.global.as_ref().unwrap().latency,
+                ))
+            }
+            NetworkType::FatTree =&gt; {
+                <span class="macro">boxed!</span>(TopologyAwareNetworkModel::new())
+            }
         };
 
-        <span class="kw">let </span>network_ctx = <span class="self">self</span>.sim.create_context(<span class="string">"network"</span>);
         <span class="kw">let </span>network = <span class="macro">rc!</span>(<span class="macro">refcell!</span>(Network::new(network_model, network_ctx)));
+
         <span class="self">self</span>.sim.add_handler(<span class="string">"network"</span>, network.clone());
 
         network
+    }
+
+    <span class="kw">fn </span>init_network_topology(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        network: Rc&lt;RefCell&lt;Network&gt;&gt;,
+        network_config: <span class="kw-2">&amp;</span>NetworkConfig,
+        host_names: Vec&lt;String&gt;,
+    ) {
+        <span class="kw">let </span><span class="kw-2">mut </span>switches = FxHashMap::default();
+        <span class="kw">let </span>l1_switch_count = network_config.l1_switch_count.unwrap();
+
+        <span class="kw">for </span>(i, host) <span class="kw">in </span>host_names.iter().enumerate() {
+            switches.insert(host.clone(), i % l1_switch_count);
+        }
+
+        make_fat_tree_topology(
+            <span class="kw-2">&amp;mut </span>network.borrow_mut(),
+            network_config.l2_switch_count.unwrap(),
+            network_config.l1_switch_count.unwrap(),
+            switches,
+            network_config.uplink.as_ref().unwrap(),
+            network_config.downlink.as_ref().unwrap(),
+            network_config.switch.as_ref().unwrap(),
+        );
+
+        network.borrow_mut().init_topology();
     }
 
     <span class="kw">fn </span>build_cluster(
@@ -564,25 +648,33 @@
             network = <span class="prelude-val">Some</span>(<span class="self">self</span>.build_network(network_config.as_ref().unwrap()));
         }
 
+        <span class="kw">let </span><span class="kw-2">mut </span>host_names = <span class="macro">vec!</span>[];
+
         <span class="kw">for </span>host_group <span class="kw">in </span>hosts_groups {
             <span class="kw">if </span>host_group.count.unwrap_or(<span class="number">1</span>) == <span class="number">1 </span>{
-                <span class="self">self</span>.build_host(
+                host_names.push(<span class="self">self</span>.build_host(
                     HostConfig::from_group_config(<span class="kw-2">&amp;</span>host_group, <span class="prelude-val">None</span>),
                     network_config.as_ref(),
                     network.clone(),
-                );
+                ));
             } <span class="kw">else </span>{
                 <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..host_group.count.unwrap() {
-                    <span class="self">self</span>.build_host(
+                    host_names.push(<span class="self">self</span>.build_host(
                         HostConfig::from_group_config(<span class="kw-2">&amp;</span>host_group, <span class="prelude-val">Some</span>(i)),
                         network_config.as_ref(),
                         network.clone(),
-                    );
+                    ));
                 }
             }
         }
         <span class="kw">for </span>host_config <span class="kw">in </span>hosts {
-            <span class="self">self</span>.build_host(host_config, network_config.as_ref(), network.clone());
+            host_names.push(<span class="self">self</span>.build_host(host_config, network_config.as_ref(), network.clone()));
+        }
+
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(network_config) = network_config.as_ref() {
+            <span class="kw">if </span>network_config.r#type == NetworkType::FatTree {
+                <span class="self">self</span>.init_network_topology(network.unwrap(), network_config, host_names);
+            }
         }
     }
 
@@ -591,7 +683,7 @@
         <span class="kw-2">mut </span>host_config: HostConfig,
         network_config: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>NetworkConfig&gt;,
         network: <span class="prelude-ty">Option</span>&lt;Rc&lt;RefCell&lt;Network&gt;&gt;&gt;,
-    ) {
+    ) -&gt; String {
         <span class="kw">let </span>cluster = <span class="self">self</span>.cluster.borrow();
 
         <span class="kw">let </span>host_name = <span class="macro">format!</span>(<span class="string">"host-{}"</span>, host_config.name);
@@ -616,10 +708,10 @@
                 <span class="macro">boxed!</span>(SharedBandwidthNetworkModel::new(
                     host_config
                         .local_newtork_bw
-                        .unwrap_or(network_config.unwrap().local_bandwidth),
+                        .unwrap_or(network_config.unwrap().local.bandwidth),
                     host_config
                         .local_newtork_latency
-                        .unwrap_or(network_config.unwrap().local_latency),
+                        .unwrap_or(network_config.unwrap().local.latency),
                 )),
             );
             network.borrow_mut().set_location(host_ctx.id(), <span class="kw-2">&amp;</span>host_name);
@@ -658,6 +750,8 @@
             .add_host(host_name.clone(), <span class="kw-2">&amp;</span>host_config);
 
         cluster.add_host(host_config, host);
+
+        host_name
     }
 
     <span class="kw">pub fn </span>register_profile_with_constructor(<span class="kw-2">&amp;mut </span><span class="self">self</span>, name: String, constructor: ConstructorFn) {

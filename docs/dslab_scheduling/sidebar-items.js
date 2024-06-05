@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"mod":["cluster","cluster_events","config","execution_profiles","host","monitoring","parallel_launcher","proxy","scheduler","simulation","workload_generators"]};
+window.SIDEBAR_ITEMS = {"mod":["cluster","cluster_events","config","execution_profiles","host","monitoring","networks","parallel_launcher","proxy","scheduler","simulation","workload_generators"]};

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"mod":["fat_tree","resolver","simple_models"]};

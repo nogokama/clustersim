@@ -420,7 +420,7 @@
             <span class="kw">let </span>time = execution_request.time;
             <span class="self">self</span>.generators_last_time[generator_id] = time;
 
-            <span class="self">self</span>.ctx.emit(
+            <span class="self">self</span>.ctx.emit_ordered(
                 ExecutionRequestEvent {
                     request: execution_request,
                 },

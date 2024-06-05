@@ -112,6 +112,19 @@
 <a href="#110" id="110">110</a>
 <a href="#111" id="111">111</a>
 <a href="#112" id="112">112</a>
+<a href="#113" id="113">113</a>
+<a href="#114" id="114">114</a>
+<a href="#115" id="115">115</a>
+<a href="#116" id="116">116</a>
+<a href="#117" id="117">117</a>
+<a href="#118" id="118">118</a>
+<a href="#119" id="119">119</a>
+<a href="#120" id="120">120</a>
+<a href="#121" id="121">121</a>
+<a href="#122" id="122">122</a>
+<a href="#123" id="123">123</a>
+<a href="#124" id="124">124</a>
+<a href="#125" id="125">125</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>dslab_core::SimulationContext;
 <span class="kw">use </span>serde::{Deserialize, Serialize};
 
@@ -151,6 +164,8 @@
 <span class="kw">pub struct </span>NativeWorkloadGenerator {
     workload: Vec&lt;NativeExecutionDefinition&gt;,
     profile_builder: ProfileBuilder,
+    profiles_parsed: bool,
+    generated_workload: bool,
     options: Options,
 }
 
@@ -169,6 +184,8 @@
         NativeWorkloadGenerator {
             workload: jobs,
             profile_builder,
+            profiles_parsed: <span class="bool-val">false</span>,
+            generated_workload: <span class="bool-val">false</span>,
             options,
         }
     }
@@ -181,31 +198,40 @@
         _limit: <span class="prelude-ty">Option</span>&lt;u64&gt;,
     ) -&gt; Vec&lt;ExecutionRequest&gt; {
         <span class="kw">if let </span><span class="prelude-val">Some</span>(profile_path) = <span class="kw-2">&amp;</span><span class="self">self</span>.options.profile_path {
-            <span class="kw">let </span>profiles = serde_yaml::from_str(
-                <span class="kw-2">&amp;</span>std::fs::read_to_string(profile_path)
-                    .unwrap_or_else(|e| <span class="macro">panic!</span>(<span class="string">"Can't read file {}: {}"</span>, profile_path, e)),
-            )
-            .unwrap_or_else(|e| <span class="macro">panic!</span>(<span class="string">"Can't parse profiles from file {}: {}"</span>, profile_path, e));
+            <span class="kw">if </span>!<span class="self">self</span>.profiles_parsed {
+                <span class="kw">let </span>profiles = serde_yaml::from_str(
+                    <span class="kw-2">&amp;</span>std::fs::read_to_string(profile_path)
+                        .unwrap_or_else(|e| <span class="macro">panic!</span>(<span class="string">"Can't read file {}: {}"</span>, profile_path, e)),
+                )
+                .unwrap_or_else(|e| {
+                    <span class="macro">panic!</span>(<span class="string">"Can't parse profiles from file {}: {}"</span>, profile_path, e)
+                });
 
-            <span class="self">self</span>.profile_builder.parse_profiles(<span class="kw-2">&amp;</span>profiles)
+                <span class="self">self</span>.profile_builder.parse_profiles(<span class="kw-2">&amp;</span>profiles);
+                <span class="self">self</span>.profiles_parsed = <span class="bool-val">true</span>;
+            }
         }
 
-        <span class="kw">let </span>workload = <span class="self">self
-            </span>.workload
-            .iter()
-            .map(|job| ExecutionRequest {
-                id: job.id,
-                name: job.name.clone(),
-                time: job.submit_time,
-                schedule_after: <span class="prelude-val">None</span>,
-                collection_id: <span class="prelude-val">None</span>,
-                execution_index: <span class="prelude-val">None</span>,
-                resources: job.resources.clone(),
-                profile: <span class="self">self</span>.profile_builder.build(job.profile.clone()),
-                wall_time_limit: job.wall_time_limit,
-                priority: job.priority,
-            })
-            .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
+        <span class="kw">let </span>workload = <span class="kw">if </span>!<span class="self">self</span>.generated_workload {
+            <span class="self">self</span>.generated_workload = <span class="bool-val">true</span>;
+            <span class="self">self</span>.workload
+                .iter()
+                .map(|job| ExecutionRequest {
+                    id: job.id,
+                    name: job.name.clone(),
+                    time: job.submit_time,
+                    schedule_after: <span class="prelude-val">None</span>,
+                    collection_id: <span class="prelude-val">None</span>,
+                    execution_index: <span class="prelude-val">None</span>,
+                    resources: job.resources.clone(),
+                    profile: <span class="self">self</span>.profile_builder.build(job.profile.clone()),
+                    wall_time_limit: job.wall_time_limit,
+                    priority: job.priority,
+                })
+                .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;()
+        } <span class="kw">else </span>{
+            <span class="macro">vec!</span>[]
+        };
 
         workload
     }
