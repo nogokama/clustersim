@@ -199,7 +199,7 @@
 <span class="kw">impl </span>WorkloadGenerator <span class="kw">for </span>SWFTraceReader {
     <span class="kw">fn </span>get_workload(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        ctx: <span class="kw-2">&amp;</span>dslab_core::SimulationContext,
+        _ctx: <span class="kw-2">&amp;</span>dslab_core::SimulationContext,
         limit: <span class="prelude-ty">Option</span>&lt;u64&gt;,
     ) -&gt; Vec&lt;ExecutionRequest&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>requests = <span class="macro">vec!</span>[];
