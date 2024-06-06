@@ -127,15 +127,6 @@
 <a href="#125" id="125">125</a>
 <a href="#126" id="126">126</a>
 <a href="#127" id="127">127</a>
-<a href="#128" id="128">128</a>
-<a href="#129" id="129">129</a>
-<a href="#130" id="130">130</a>
-<a href="#131" id="131">131</a>
-<a href="#132" id="132">132</a>
-<a href="#133" id="133">133</a>
-<a href="#134" id="134">134</a>
-<a href="#135" id="135">135</a>
-<a href="#136" id="136">136</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::{fs::File, rc::Rc};
 
 <span class="kw">use </span>csv::Reader;
@@ -227,11 +218,6 @@
 
         <span class="kw">for </span>record <span class="kw">in </span><span class="self">self</span>.reader.deserialize() {
             <span class="kw">let </span>record: SWFRecord = record.unwrap();
-            <span class="kw">if let </span><span class="prelude-val">Some</span>(status) = record.status.as_ref() {
-                <span class="kw">if </span>status != <span class="string">"Terminated" </span>{
-                    <span class="kw">continue</span>;
-                }
-            }
 
             <span class="kw">if </span>record.cpu_max.is_none() || record.mem_max.is_none() {
                 <span class="kw">continue</span>;
@@ -239,10 +225,6 @@
 
             <span class="kw">let </span>cpu = record.cpu_max.unwrap();
             <span class="kw">let </span>mem = record.mem_max.unwrap();
-            <span class="kw">if </span>!(<span class="number">1. </span>..=<span class="number">9600.</span>).contains(<span class="kw-2">&amp;</span>cpu) || !(<span class="number">0. </span>..=<span class="number">100.</span>).contains(<span class="kw-2">&amp;</span>mem) {
-                <span class="macro">log_warn!</span>(ctx, <span class="string">"Invalid record: {:?}"</span>, record);
-                <span class="kw">continue</span>;
-            }
 
             requests.push(ExecutionRequest::simple(
                 record.start_time.unwrap(),
