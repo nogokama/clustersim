@@ -1,3 +1,9 @@
-(function() {var implementors = {
-"dslab_scheduling":[["impl EventHandler for <a class=\"struct\" href=\"dslab_scheduling/host/cluster_host/struct.ClusterHost.html\" title=\"struct dslab_scheduling::host::cluster_host::ClusterHost\">ClusterHost</a>"],["impl EventHandler for <a class=\"struct\" href=\"dslab_scheduling/proxy/struct.Proxy.html\" title=\"struct dslab_scheduling::proxy::Proxy\">Proxy</a>"],["impl&lt;T: <a class=\"trait\" href=\"dslab_scheduling/scheduler/trait.Scheduler.html\" title=\"trait dslab_scheduling::scheduler::Scheduler\">Scheduler</a>&gt; EventHandler for <a class=\"struct\" href=\"dslab_scheduling/scheduler/struct.SchedulerInvoker.html\" title=\"struct dslab_scheduling::scheduler::SchedulerInvoker\">SchedulerInvoker</a>&lt;T&gt;"]]
-};if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()
+(function() {
+    const implementors = Object.fromEntries([["dslab_scheduling",[["impl EventHandler for <a class=\"struct\" href=\"dslab_scheduling/host/cluster_host/struct.ClusterHost.html\" title=\"struct dslab_scheduling::host::cluster_host::ClusterHost\">ClusterHost</a>",0],["impl EventHandler for <a class=\"struct\" href=\"dslab_scheduling/proxy/struct.Proxy.html\" title=\"struct dslab_scheduling::proxy::Proxy\">Proxy</a>",0],["impl&lt;T: <a class=\"trait\" href=\"dslab_scheduling/scheduler/trait.Scheduler.html\" title=\"trait dslab_scheduling::scheduler::Scheduler\">Scheduler</a>&gt; EventHandler for <a class=\"struct\" href=\"dslab_scheduling/scheduler/struct.SchedulerInvoker.html\" title=\"struct dslab_scheduling::scheduler::SchedulerInvoker\">SchedulerInvoker</a>&lt;T&gt;",0]]]]);
+    if (window.register_implementors) {
+        window.register_implementors(implementors);
+    } else {
+        window.pending_implementors = implementors;
+    }
+})()
+//{"start":59,"fragment_lengths":[738]}
